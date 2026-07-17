@@ -1,0 +1,112 @@
+name: Build Release APK
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+  workflow_dispatch:
+
+env:
+  FLUTTER_VERSION: '3.27.x'
+  GRADLE_OPTS: '-Dorg.gradle.daemon=false -Dorg.gradle.parallel=true -Dorg.gradle.caching=true -Dorg.gradle.configureondemand=true'
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          flutter-version: ${{ env.FLUTTER_VERSION }}
+          channel: stable
+          cache: true
+
+      - name: Setup Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: zulu
+          java-version: 21
+
+      - name: Cache Gradle
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.gradle/caches
+            ~/.gradle/wrapper
+          key: gradle-${{ runner.os }}-${{ hashFiles('android/**/*.gradle*', 'android/**/gradle-wrapper.properties') }}
+          restore-keys: gradle-${{ runner.os }}-
+
+      - name: Cache pub
+        uses: actions/cache@v4
+        with:
+          path: ~/.pub-cache
+          key: pub-${{ runner.os }}-${{ hashFiles('pubspec.yaml') }}
+          restore-keys: pub-${{ runner.os }}-
+
+      - name: Cache NDK
+        id: cache-ndk
+        uses: actions/cache@v4
+        with:
+          path: /usr/local/lib/android/sdk/ndk/27.0.12077973
+          key: ndk-27.0.12077973-${{ runner.os }}
+
+      - name: Install cmake & NDK & licenses
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq cmake
+          yes | $ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager --licenses > /dev/null 2>&1 || true
+          if [ "${{ steps.cache-ndk.outputs.cache-hit }}" != "true" ]; then
+            yes | $ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager "ndk;27.0.12077973" > /dev/null 2>&1
+          fi
+
+      - name: Install Flutter dependencies
+        run: flutter pub get
+
+      - name: Create release keystore (from secrets)
+        run: |
+          if [ -n "${{ secrets.KEYSTORE_BASE64 }}" ]; then
+            echo '${{ secrets.KEYSTORE_BASE64 }}' | base64 -d > publish.keystore
+            echo 'storePassword=${{ secrets.STORE_PASSWORD }}' >> android/key.properties
+            echo 'keyPassword=${{ secrets.KEY_PASSWORD }}' >> android/key.properties
+            echo 'keyAlias=${{ secrets.KEY_ALIAS }}' >> android/key.properties
+            echo 'storeFile=../../publish.keystore' >> android/key.properties
+          else
+            echo "No keystore secrets set — building with debug signing"
+          fi
+
+      - name: Build universal APK (warm up Gradle & compile Dart)
+        run: |
+          flutter build apk --release --no-tree-shake-icons
+
+      - name: Build split APKs (per architecture, reuses build cache)
+        run: |
+          flutter build apk --release --split-per-abi --no-tree-shake-icons
+
+      - name: Package APKs
+        run: |
+          mkdir -p output
+          # Split APKs
+          for apk in build/app/outputs/flutter-apk/app-*-release.apk; do
+            arch=$(echo "$apk" | sed -n 's/.*app-\(.*\)-release.apk/\1/p')
+            cp "$apk" "output/Chess-Flutter-${arch}.apk"
+          done
+          # Universal
+          cp build/app/outputs/flutter-apk/app-release.apk output/Chess-Flutter-universal.apk
+          ls -lh output/
+
+      - name: Upload APKs (all architectures)
+        uses: actions/upload-artifact@v4
+        with:
+          name: Chess-Flutter-APKs
+          path: output/*.apk
+          retention-days: 30
+
+      - name: Cleanup Gradle cache
+        if: always()
+        run: |
+          rm -rf ~/.gradle/caches/journal-* 2>/dev/null || true
+          rm -rf ~/.gradle/caches/*/fileHashes/* 2>/dev/null || true

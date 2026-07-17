@@ -1,0 +1,92 @@
+plugins {
+    id "com.android.application"
+    id "kotlin-android"
+    id "dev.flutter.flutter-gradle-plugin"
+}
+
+def keystoreProperties = new Properties()
+def keystorePropertiesFile = rootProject.file("key.properties")
+if (keystorePropertiesFile.exists()) {
+    keystoreProperties.load(new FileInputStream(keystorePropertiesFile))
+}
+
+android {
+    namespace = "com.jleoz.chess"
+    compileSdk = 35
+    ndkVersion = "27.0.12077973"
+
+    compileOptions {
+        sourceCompatibility = JavaVersion.VERSION_17
+        targetCompatibility = JavaVersion.VERSION_17
+    }
+
+    kotlinOptions {
+        jvmTarget = JavaVersion.VERSION_17
+    }
+
+    sourceSets {
+        main.java.srcDirs += "src/main/kotlin"
+    }
+
+    defaultConfig {
+        applicationId = "com.jleoz.chess"
+        minSdk = flutter.minSdkVersion
+        targetSdk = 35
+        versionCode = flutter.versionCode
+        versionName = flutter.versionName
+
+        // 无 abiFilters = 构建所有架构（arm64-v8a, armeabi-v7a, x86_64）
+    }
+
+    signingConfigs {
+        release {
+            keyAlias = keystoreProperties["keyAlias"]
+            keyPassword = keystoreProperties["keyPassword"]
+            storeFile = keystoreProperties["storeFile"] ? file(keystoreProperties["storeFile"]) : null
+            storePassword = keystoreProperties["storePassword"]
+        }
+    }
+
+    buildTypes {
+        release {
+            signingConfig = signingConfigs.release
+            minifyEnabled = true
+            shrinkResources = true
+            proguardFiles(
+                getDefaultProguardFile("proguard-android-optimize.txt"),
+                "proguard-rules.pro"
+            )
+        }
+    }
+}
+
+// 后处理：用 NDK strip 工具削减各架构 .so 体积
+tasks.whenTaskAdded { task ->
+    if (task.name == 'stripReleaseDebugSymbols') {
+        task.doLast {
+            def stripCmd = "${android.ndkDirectory}/toolchains/llvm/prebuilt/linux-x86_64/bin/llvm-strip"
+            def abis = ["arm64-v8a", "armeabi-v7a", "x86_64"]
+            abis.each { abi ->
+                def libDir = file("${buildDir}/intermediates/merged_native_libs/release/out/lib/${abi}/")
+                if (libDir.exists()) {
+                    fileTree(libDir)
+                        .matching { include "**/*.so" }
+                        .each { so -> exec { commandLine stripCmd, "--strip-all", so.absolutePath } }
+                }
+            }
+        }
+    }
+}
+
+kotlin {
+    jvmToolchain(17)
+}
+
+flutter {
+    source = "../.."
+}
+
+dependencies {
+    implementation("org.jetbrains.kotlin:kotlin-stdlib-jdk8:2.1.20")
+    implementation("com.google.android.play:core:1.10.3")
+}

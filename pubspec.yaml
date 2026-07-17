@@ -1,0 +1,33 @@
+name: chess_app
+description: 弈 — 多合一棋牌游戏（五子棋、井字棋、中国象棋、国际象棋、换牌扑克、德州扑克、UNO、斗地主）
+publish_to: 'none'
+version: 1.0.0+1
+
+environment:
+  sdk: '>=3.5.0 <4.0.0'
+
+dependencies:
+  flutter:
+    sdk: flutter
+  flutter_localizations:
+    sdk: flutter
+  cupertino_icons: ^1.0.8
+  provider: ^6.1.2
+  shared_preferences: ^2.2.2
+  url_launcher: ^6.3.0
+  path_provider: ^2.1.1
+  http: ^1.2.0
+  chessground: ^5.0.0
+  card_game: ^2.0.0
+  poker_solver: ^1.0.0
+  dynamic_color: 1.7.0
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^5.0.0
+
+flutter:
+  uses-material-design: true
+  assets:
+    - assets/app_icon_256.png
+    - assets/app_icon_512.png
