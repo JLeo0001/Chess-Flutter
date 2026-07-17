@@ -1,0 +1,574 @@
+name: Build & Release
+
+on:
+  push:
+    branches: [ main ]
+    tags: [ 'v*' ]
+  pull_request:
+    branches: [ main ]
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Override version tag (e.g. v1.0.3)'
+        required: false
+
+# ── 并发控制：同一分支新提交自动取消旧运行 ──
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  FLUTTER_VERSION: '3.27.x'
+
+# ── GitHub Pages 部署权限 ──
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+# ── 共享步骤：跨平台一致的 Flutter 初始化 ──
+#
+# 使用 YAML 锚点避免重复，但注意 composite 级别的锚点在不同 job 间不共享
+# （每个 job 有自己的 `steps`），所以这里只在同 job 内部用锚点。
+
+jobs:
+  ##############################################################################
+  #  Version Detection  ── 一劳永逸算出版本号
+  ##############################################################################
+  version:
+    name: Detect version
+    runs-on: ubuntu-latest
+    outputs:
+      tag: ${{ steps.v.outputs.tag }}
+      number: ${{ steps.v.outputs.number }}
+    steps:
+      - uses: actions/checkout@v5
+      - id: v
+        run: |
+          # 优先用 workflow_dispatch 传入的版本
+          if [ -n "${{ github.event.inputs.version }}" ]; then
+            echo "tag=${{ github.event.inputs.version }}" >> "$GITHUB_OUTPUT"
+            echo "number=${tag#v}" >> "$GITHUB_OUTPUT"
+          # GitHub Release tag 触发
+          elif [[ "${{ github.ref }}" == refs/tags/v* ]]; then
+            echo "tag=${GITHUB_REF_NAME}" >> "$GITHUB_OUTPUT"
+            echo "number=${GITHUB_REF_NAME#v}" >> "$GITHUB_OUTPUT"
+          # 从 pubspec.yaml 读取
+          else
+            VER=$(grep '^version: ' pubspec.yaml | sed 's/version: //')
+            echo "tag=v$VER" >> "$GITHUB_OUTPUT"
+            echo "number=$VER" >> "$GITHUB_OUTPUT"
+          fi
+
+  ##############################################################################
+  #  Android  (ubuntu + Java + NDK)
+  ##############################################################################
+  android:
+    name: 📱 Android APK
+    needs: version
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+
+      - name: Setup Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          flutter-version: ${{ env.FLUTTER_VERSION }}
+          channel: stable
+          cache: true
+
+      - name: Setup Java
+        uses: actions/setup-java@v5
+        with:
+          distribution: zulu
+          java-version: 21
+
+      - name: Cache Gradle
+        uses: actions/cache@v5
+        with:
+          path: |
+            ~/.gradle/caches
+            ~/.gradle/wrapper
+          key: gradle-${{ runner.os }}-${{ hashFiles('android/**/*.gradle*', 'android/**/gradle-wrapper.properties') }}
+          restore-keys: gradle-${{ runner.os }}-
+
+      - name: Cache pub
+        uses: actions/cache@v5
+        with:
+          path: ~/.pub-cache
+          key: pub-${{ runner.os }}-${{ hashFiles('pubspec.yaml') }}
+          restore-keys: pub-${{ runner.os }}-
+
+      - name: Cache NDK
+        id: cache-ndk
+        uses: actions/cache@v5
+        with:
+          path: /usr/local/lib/android/sdk/ndk/27.0.12077973
+          key: ndk-27.0.12077973-${{ runner.os }}
+
+      - name: Install cmake & NDK & licenses
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq cmake
+          yes | $ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager --licenses > /dev/null 2>&1 || true
+          if [ "${{ steps.cache-ndk.outputs.cache-hit }}" != "true" ]; then
+            yes | $ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager "ndk;27.0.12077973" > /dev/null 2>&1
+          fi
+
+      - name: Install Flutter dependencies
+        run: flutter pub get
+
+      - name: Create release keystore (from secrets)
+        run: |
+          if [ -n "${{ secrets.KEYSTORE_BASE64 }}" ]; then
+            echo '${{ secrets.KEYSTORE_BASE64 }}' | base64 -d > publish.keystore
+            echo 'storePassword=${{ secrets.STORE_PASSWORD }}' >> android/key.properties
+            echo 'keyPassword=${{ secrets.KEY_PASSWORD }}' >> android/key.properties
+            echo 'keyAlias=${{ secrets.KEY_ALIAS }}' >> android/key.properties
+            echo 'storeFile=../../publish.keystore' >> android/key.properties
+          else
+            echo "No keystore secrets set — building with debug signing"
+          fi
+
+      - name: Build split APKs
+        run: flutter build apk --release --split-per-abi --no-tree-shake-icons
+
+      - name: Package & rename APKs
+        run: |
+          VER=${{ needs.version.outputs.tag }}
+          mkdir -p output
+          for apk in build/app/outputs/flutter-apk/app-*-release.apk; do
+            f=$(basename "$apk")
+            case "$f" in
+              app-armeabi-v7a-release.apk)   out="Chess-Flutter-${VER}-android-arm32.apk" ;;
+              app-arm64-v8a-release.apk)     out="Chess-Flutter-${VER}-android-arm64.apk" ;;
+              app-x86_64-release.apk)        out="Chess-Flutter-${VER}-android-x64.apk" ;;
+              *)                             continue ;;
+            esac
+            cp "$apk" "output/$out"
+          done
+          ls -lh output/
+
+      - name: Upload arm64 APK
+        uses: actions/upload-artifact@v5
+        with:
+          name: Chess-Flutter-${{ needs.version.outputs.tag }}-android-arm64
+          path: output/Chess-Flutter-${{ needs.version.outputs.tag }}-android-arm64.apk
+          compression-level: 0
+          retention-days: 30
+
+      - name: Upload arm32 APK
+        uses: actions/upload-artifact@v5
+        with:
+          name: Chess-Flutter-${{ needs.version.outputs.tag }}-android-arm32
+          path: output/Chess-Flutter-${{ needs.version.outputs.tag }}-android-arm32.apk
+          compression-level: 0
+          retention-days: 30
+
+      - name: Upload x86_64 APK
+        uses: actions/upload-artifact@v5
+        with:
+          name: Chess-Flutter-${{ needs.version.outputs.tag }}-android-x64
+          path: output/Chess-Flutter-${{ needs.version.outputs.tag }}-android-x64.apk
+          compression-level: 0
+          retention-days: 30
+
+  ##############################################################################
+  #  Web (PWA)
+  ##############################################################################
+  web:
+    name: 🌐 Web (PWA)
+    needs: version
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+
+      - name: Setup Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          flutter-version: ${{ env.FLUTTER_VERSION }}
+          channel: stable
+          cache: true
+
+      - name: Cache pub
+        uses: actions/cache@v5
+        with:
+          path: ~/.pub-cache
+          key: pub-${{ runner.os }}-${{ hashFiles('pubspec.yaml') }}
+          restore-keys: pub-${{ runner.os }}-
+
+      - name: Install Flutter dependencies
+        run: flutter pub get
+
+      - name: Build Web
+        run: flutter build web --release --no-tree-shake-icons --base-href /Chess-Flutter/ --web-renderer html
+
+      - name: Upload Pages artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: build/web
+
+      - name: Package ZIP
+        run: |
+          mkdir -p dist
+          cd build/web && zip -qr "../../dist/Chess-Flutter-${{ needs.version.outputs.tag }}-web-pwa.zip" .
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v5
+        with:
+          name: Chess-Flutter-${{ needs.version.outputs.tag }}-web-pwa
+          path: dist/Chess-Flutter-${{ needs.version.outputs.tag }}-web-pwa.zip
+          compression-level: 0
+          retention-days: 30
+
+  ##############################################################################
+  #  Linux  — 多格式安装包
+  ##############################################################################
+  linux:
+    name: 🐧 Linux
+    needs: version
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+
+      - name: Setup Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          flutter-version: ${{ env.FLUTTER_VERSION }}
+          channel: stable
+          cache: true
+
+      - name: Cache pub
+        uses: actions/cache@v5
+        with:
+          path: ~/.pub-cache
+          key: pub-${{ runner.os }}-${{ hashFiles('pubspec.yaml') }}
+          restore-keys: pub-${{ runner.os }}-
+
+      - name: Install Linux deps
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq cmake ninja-build libgtk-3-dev rpm
+
+      - name: Install Flutter dependencies
+        run: flutter pub get
+
+      - name: Build Linux (release)
+        run: flutter build linux --release
+
+      - name: Package — AppImage
+        run: |
+          VER=${{ needs.version.outputs.tag }}
+          BUNDLE=build/linux/x64/release/bundle
+          strip "$BUNDLE/chess_app" 2>/dev/null || true
+          mkdir -p dist/appdir/usr
+          cp -r "$BUNDLE"/* dist/appdir/usr/
+          cp assets/app_icon_256.png dist/appdir/chess_app.png
+          # 用 printf 写入，避免 YAML 解析 << & > 等特殊字符
+          printf '%s\n' '[Desktop Entry]' 'Name=弈' 'Comment=Chess Board Games' \
+            'Exec=chess_app' 'Icon=chess_app' 'Type=Application' \
+            'Categories=Game;BoardGame;' > dist/appdir/chess_app.desktop
+          printf '%s\n' '#!/bin/bash' \
+            'HERE="$(dirname "$(readlink -f "${0}")")"' \
+            'export LD_LIBRARY_PATH="$HERE/usr/lib:$HERE/usr:$LD_LIBRARY_PATH"' \
+            'exec "$HERE/usr/chess_app" "$@"' > dist/appdir/AppRun
+          chmod +x dist/appdir/AppRun
+          wget -q "https://github.com/AppImage/AppImageKit/releases/download/continuous/appimagetool-x86_64.AppImage" \
+            -O /tmp/appimagetool
+          chmod +x /tmp/appimagetool
+          /tmp/appimagetool --appimage-extract-and-run dist/appdir \
+            "dist/Chess-Flutter-${VER}-linux-x64.AppImage"
+
+      - name: Package — .deb (Debian / Ubuntu)
+        run: |
+          VER=${{ needs.version.outputs.tag }}
+          VNUM=${VER#v}
+          BUNDLE=build/linux/x64/release/bundle
+          PKG=dist/deb/chess_app_${VNUM}_amd64
+          mkdir -p "$PKG/DEBIAN"
+          mkdir -p "$PKG/usr/bin"
+          mkdir -p "$PKG/usr/lib/chess_app"
+          mkdir -p "$PKG/usr/share/applications"
+          mkdir -p "$PKG/usr/share/icons/hicolor/256x256/apps"
+          # 二进制 + 库
+          cp "$BUNDLE/chess_app" "$PKG/usr/bin/"
+          cp "$BUNDLE"/lib*.so "$PKG/usr/lib/chess_app/" 2>/dev/null || true
+          cp -r "$BUNDLE/data" "$PKG/usr/lib/chess_app/" 2>/dev/null || true
+          # desktop + icon
+          cp assets/app_icon_256.png "$PKG/usr/share/icons/hicolor/256x256/apps/chess_app.png"
+          printf '%s\n' '[Desktop Entry]' 'Name=弈' 'Comment=Chess Board Games' \
+            'Exec=chess_app' 'Icon=chess_app' 'Type=Application' \
+            'Categories=Game;BoardGame;' 'Terminal=false' \
+            > "$PKG/usr/share/applications/chess_app.desktop"
+          # control
+          printf '%s\n' 'Package: chess-app' "Version: $VNUM" \
+            'Section: games' 'Priority: optional' 'Architecture: amd64' \
+            'Depends: libgtk-3-0 (>= 3.24)' \
+            'Maintainer: JasonLeoZhou <jleo0001@github.com>' \
+            'Description: Chess Board Games' \
+            ' All-in-one board game collection with 10 classic games,' \
+            ' built-in AI opponents, and day/night themes.' \
+            > "$PKG/DEBIAN/control"
+          # wrapper script
+          mkdir -p "$PKG/usr/lib/chess_app"
+          cp "$BUNDLE/chess_app" "$PKG/usr/lib/chess_app/"
+          printf '%s\n' '#!/bin/bash' \
+            'export LD_LIBRARY_PATH="/usr/lib/chess_app:$LD_LIBRARY_PATH"' \
+            'exec "/usr/lib/chess_app/chess_app" "$@"' \
+            > "$PKG/usr/bin/chess_app"
+          chmod +x "$PKG/usr/bin/chess_app"
+          dpkg-deb --build "$PKG"
+          mv "${PKG}.deb" "dist/Chess-Flutter-${VER}-linux-amd64.deb"
+
+      - name: Package — .tar.gz (通用)
+        run: |
+          VER=${{ needs.version.outputs.tag }}
+          tar czf "dist/Chess-Flutter-${VER}-linux-x64.tar.gz" \
+            -C build/linux/x64/release/bundle .
+
+      - name: Upload AppImage
+        uses: actions/upload-artifact@v5
+        with:
+          name: Chess-Flutter-${{ needs.version.outputs.tag }}-linux-x64-AppImage
+          path: dist/Chess-Flutter-${{ needs.version.outputs.tag }}-linux-x64.AppImage
+          compression-level: 0
+          retention-days: 30
+
+      - name: Upload .deb
+        uses: actions/upload-artifact@v5
+        with:
+          name: Chess-Flutter-${{ needs.version.outputs.tag }}-linux-amd64-deb
+          path: dist/Chess-Flutter-${{ needs.version.outputs.tag }}-linux-amd64.deb
+          compression-level: 0
+          retention-days: 30
+
+      - name: Upload .tar.gz
+        uses: actions/upload-artifact@v5
+        with:
+          name: Chess-Flutter-${{ needs.version.outputs.tag }}-linux-x64-tar.gz
+          path: dist/Chess-Flutter-${{ needs.version.outputs.tag }}-linux-x64.tar.gz
+          compression-level: 0
+          retention-days: 30
+
+  ##############################################################################
+  #  Windows  (pin to VS 2022 runner for Flutter 3.27 compatibility)
+  ##############################################################################
+  windows:
+    name: 🪟 Windows (x64)
+    needs: version
+    # Flutter 3.27's Windows toolchain predates Visual Studio 2026.
+    # Pin to windows-2022 so Visual Studio 2022 and its CMake generator are available.
+    runs-on: windows-2022
+    steps:
+      - uses: actions/checkout@v5
+
+      - name: Setup Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          flutter-version: ${{ env.FLUTTER_VERSION }}
+          channel: stable
+          cache: true
+
+      - name: Cache pub
+        uses: actions/cache@v5
+        with:
+          path: ~/.pub-cache
+          key: pub-${{ runner.os }}-${{ hashFiles('pubspec.yaml') }}
+          restore-keys: pub-${{ runner.os }}-
+
+      - name: Install Flutter dependencies
+        run: flutter pub get
+
+      - name: Build Windows (release)
+        run: |
+          # Flutter 3.27 hardcodes -G "Visual Studio 16 2019".
+          # The job is pinned to windows-2022; rewrite Flutter's generator
+          # argument to the installed Visual Studio generator (normally VS 2022).
+          $vswhere = "${env:ProgramFiles(x86)}\Microsoft Visual Studio\Installer\vswhere.exe"
+          $vsPath = & $vswhere -latest -property installationPath
+          $vsVersion = & $vswhere -latest -property installationVersion
+          Write-Host "VS installed at: $vsPath"
+          Write-Host "VS installationVersion: $vsVersion"
+
+          # Use the Visual Studio product version (17.x for VS 2022), not the
+          # year folder in the installation path (for example ...\2022\Enterprise).
+          $vsMajor = [int]($vsVersion.Split('.')[0])
+          switch ($vsMajor) {
+            18 { $cmakeGenerator = "Visual Studio 18 2026" }
+            17 { $cmakeGenerator = "Visual Studio 17 2022" }
+            16 { $cmakeGenerator = "Visual Studio 16 2019" }
+            default { throw "Unsupported Visual Studio version: $vsVersion ($vsPath)" }
+          }
+          Write-Host "Using CMake generator: $cmakeGenerator"
+
+          $cmakeExe = (Get-Command cmake).Source
+          $cmakeDir = Split-Path -Parent $cmakeExe
+          Write-Host "cmake.exe: $cmakeExe"
+          $visualStudioGenerators = & $cmakeExe --help | Select-String "Visual Studio"
+          $visualStudioGenerators | ForEach-Object { Write-Host $_ }
+          if (-not ($visualStudioGenerators | Select-String ([regex]::Escape($cmakeGenerator)))) {
+            throw "Installed CMake does not support generator: $cmakeGenerator"
+          }
+
+          # Rename cmake.exe so Windows command lookup falls through to cmake.bat/cmake.cmd.
+          $cmakeReal = Join-Path $cmakeDir "cmake_real.exe"
+          Rename-Item -Path $cmakeExe -NewName "cmake_real.exe" -Force
+          Write-Host "Renamed -> $cmakeReal"
+
+          @"
+          @echo off
+          setlocal enabledelayedexpansion
+          set "ALLARGS=%*"
+          echo cmake wrapper args before: !ALLARGS!
+          set "ALLARGS=!ALLARGS:Visual Studio 16 2019=$cmakeGenerator!"
+          echo cmake wrapper args after:  !ALLARGS!
+          "$cmakeReal" !ALLARGS!
+          "@ | Out-File -FilePath "$cmakeDir\cmake.bat" -Encoding ASCII -Force
+
+          Copy-Item "$cmakeDir\cmake.bat" "$cmakeDir\cmake.cmd" -Force
+          Write-Host "Created cmake.bat + cmake.cmd wrapper"
+
+          $env:CMAKE_GENERATOR = $cmakeGenerator
+          $env:CMAKE_GENERATOR_INSTANCE = $vsPath
+
+          flutter build windows --release
+
+      - name: Package with ZIP
+        run: |
+          # Flutter 3.27 writes Windows desktop output under build/windows/x64/runner/Release.
+          # Keep a fallback for older Flutter layouts and print discovered Release dirs if neither exists.
+          $releaseDir = "build/windows/x64/runner/Release"
+          if (-not (Test-Path $releaseDir)) {
+            $releaseDir = "build/windows/runner/Release"
+          }
+          if (-not (Test-Path $releaseDir)) {
+            Write-Host "Known build/windows Release directories:"
+            Get-ChildItem -Path build/windows -Recurse -Directory -Filter Release -ErrorAction SilentlyContinue |
+              ForEach-Object { Write-Host $_.FullName }
+            throw "Windows release output directory not found"
+          }
+          Write-Host "Packaging Windows release directory: $releaseDir"
+          Compress-Archive -Path "$releaseDir/*" -DestinationPath Chess-Flutter-${{ needs.version.outputs.tag }}-windows-x64.zip
+        shell: pwsh
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v5
+        with:
+          name: Chess-Flutter-${{ needs.version.outputs.tag }}-windows-x64
+          path: Chess-Flutter-${{ needs.version.outputs.tag }}-windows-x64.zip
+          compression-level: 0
+          retention-days: 30
+
+  ##############################################################################
+  #  macOS + iOS  (macos-latest 共享，顺序执行以复用 Flutter 缓存)
+  ##############################################################################
+  apple-builds:
+    name: ${{ matrix.target.name }}
+    needs: version
+    strategy:
+      fail-fast: false
+      matrix:
+        target:
+          - name: 🍎 macOS (x64)
+            platform: macos
+            build: flutter build macos --release
+            upload: Chess-Flutter-${{ needs.version.outputs.tag }}-macos-x64
+            path: dist/Chess-Flutter-${{ needs.version.outputs.tag }}-macos-x64.dmg
+            pkg: |
+              APP=build/macos/Build/Products/Release/chess_app.app
+              # Strip debug symbols
+              strip -S "${APP}/Contents/MacOS/chess_app" 2>/dev/null || true
+              # 创建标准 DMG（带 Applications 拖拽快捷方式）
+              mkdir -p dist/dmg
+              cp -R "$APP" dist/dmg/
+              ln -s /Applications dist/dmg/Applications
+              hdiutil create -volname "弈" -srcfolder dist/dmg \
+                -ov -format UDZO "dist/Chess-Flutter-${{ needs.version.outputs.tag }}-macos-x64.dmg"
+              rm -rf dist/dmg
+          - name: 📱 iOS (arm64)
+            platform: ios
+            build: |
+              cd ios && pod install && cd ..
+              flutter build ios --release --no-codesign
+            app_upload: Chess-Flutter-${{ needs.version.outputs.tag }}-ios-app
+            app_path: dist/Chess-Flutter-${{ needs.version.outputs.tag }}-ios-app.zip
+            ipa_upload: Chess-Flutter-${{ needs.version.outputs.tag }}-ios-ipa
+            ipa_path: dist/Chess-Flutter-${{ needs.version.outputs.tag }}-ios-ipa.ipa
+            pkg: |
+              # .app（开发者用 Xcode / ios-deploy 安装）
+              ditto -c -k --keepParent build/ios/iphoneos/Runner.app \
+                "dist/Chess-Flutter-${{ needs.version.outputs.tag }}-ios-app.zip"
+              # .ipa（unsigned，侧载用）
+              mkdir -p dist/Payload
+              cp -r build/ios/iphoneos/Runner.app dist/Payload/
+              cd dist && zip -qr "Chess-Flutter-${{ needs.version.outputs.tag }}-ios-ipa.ipa" Payload/
+              rm -rf Payload
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v5
+
+      - name: Setup Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          flutter-version: ${{ env.FLUTTER_VERSION }}
+          channel: stable
+          cache: true
+
+      - name: Cache pub
+        uses: actions/cache@v5
+        with:
+          path: ~/.pub-cache
+          key: pub-${{ runner.os }}-${{ hashFiles('pubspec.yaml') }}
+          restore-keys: pub-${{ runner.os }}-
+
+      - name: Install Flutter dependencies
+        run: flutter pub get
+
+      - name: Build & Package
+        run: |
+          ${{ matrix.target.build }}
+          ${{ matrix.target.pkg }}
+
+      - name: Upload macOS artifact
+        if: matrix.target.platform == 'macos'
+        uses: actions/upload-artifact@v5
+        with:
+          name: ${{ matrix.target.upload }}
+          path: ${{ matrix.target.path }}
+          compression-level: 0
+          retention-days: 30
+
+      - name: Upload iOS .app artifact
+        if: matrix.target.platform == 'ios'
+        uses: actions/upload-artifact@v5
+        with:
+          name: ${{ matrix.target.app_upload }}
+          path: ${{ matrix.target.app_path }}
+          compression-level: 0
+          retention-days: 30
+
+      - name: Upload iOS .ipa artifact
+        if: matrix.target.platform == 'ios'
+        uses: actions/upload-artifact@v5
+        with:
+          name: ${{ matrix.target.ipa_upload }}
+          path: ${{ matrix.target.ipa_path }}
+          compression-level: 0
+          retention-days: 30
+
+  ##############################################################################
+  #  GitHub Pages Deploy  (仅 main 分支推送触发)
+  ##############################################################################
+  deploy:
+    name: 🌐 GitHub Pages
+    needs: [web]
+    # 只在 main 分支推送时部署，PR 和 tag 推送不部署
+    if: github.ref == 'refs/heads/main' && github.event_name != 'pull_request'
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4

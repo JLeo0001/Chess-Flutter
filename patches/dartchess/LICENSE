@@ -1,0 +1,6 @@
+dartchess is Copyright (C) 2023 lichess-org, licensed under GPL v3.
+https://github.com/lichess-org/dartchess
+
+This patched version modifies lib/src/square_set.dart to replace the 64-bit SWAR
+popcount with a web-compatible Brian Kernighan implementation. Everything else
+is verbatim from the original dartchess 0.9.2.
