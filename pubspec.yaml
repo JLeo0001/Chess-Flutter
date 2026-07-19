@@ -1,7 +1,7 @@
 name: chess_app
 description: 弈 — 多合一棋牌游戏（五子棋、井字棋、中国象棋、国际象棋、换牌扑克、德州扑克、UNO、斗地主）
 publish_to: 'none'
-version: 1.0.0+1
+version: 1.0.1+1
 
 environment:
   sdk: '>=3.5.0 <4.0.0'

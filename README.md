@@ -6,7 +6,7 @@
 
 <p align="center">
   <img src="https://img.shields.io/badge/Flutter-3.27-02569B?logo=flutter&logoColor=white" alt="Flutter"/>
-  <img src="https://img.shields.io/badge/version-1.0.0-blue" alt="v1.0.0"/>
+  <img src="https://img.shields.io/badge/version-1.0.1-blue" alt="v1.0.1"/>
   <img src="https://img.shields.io/badge/Android-8%2B-34A853?logo=android&logoColor=white" alt="Android 8+"/>
   <img src="https://img.shields.io/badge/license-MIT-yellow" alt="MIT"/>
   <img src="https://img.shields.io/badge/platform-Android%20%7C%20iOS%20%7C%20Linux%20%7C%20Windows%20%7C%20macOS-blue" alt="Platform"/>
