@@ -88,13 +88,9 @@ class _MenuPageState extends State<MenuPage>
                 children: [
                   IconButton(
                     key: _themeBtnKey,
-                    icon: AnimatedSwitcher(
-                      duration: const Duration(milliseconds: 200),
-                      child: Icon(
-                        night ? Icons.light_mode_outlined : Icons.dark_mode_outlined,
-                        key: ValueKey(night),
-                        color: cs.primary,
-                      ),
+                    icon: Icon(
+                      night ? Icons.light_mode_outlined : Icons.dark_mode_outlined,
+                      color: cs.primary,
                     ),
                     onPressed: _onThemeToggle,
                   ),

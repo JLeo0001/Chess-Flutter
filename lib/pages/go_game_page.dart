@@ -65,23 +65,25 @@ class _GoGamePageState extends State<GoGamePage> {
 
   void _finishLottery() {
     final bottomIsBlack = DateTime.now().millisecondsSinceEpoch % 2 == 0;
-    if (widget.isPvE) {
-      if (bottomIsBlack) {
-        _bottomC = GoGame.black; _topC = GoGame.white;
-        _humanPlayer = GoGame.black; _aiPlayer = GoGame.white;
+    setState(() {
+      if (widget.isPvE) {
+        if (bottomIsBlack) {
+          _bottomC = GoGame.black; _topC = GoGame.white;
+          _humanPlayer = GoGame.black; _aiPlayer = GoGame.white;
+        } else {
+          _bottomC = GoGame.white; _topC = GoGame.black;
+          _humanPlayer = GoGame.white; _aiPlayer = GoGame.black;
+        }
+        _ai = GoAi(_aiPlayer, 19);
+        _game.setStartingPlayer(GoGame.black);
+        _bottomL = '你'; _topL = 'AI';
       } else {
-        _bottomC = GoGame.white; _topC = GoGame.black;
-        _humanPlayer = GoGame.white; _aiPlayer = GoGame.black;
+        _bottomC = bottomIsBlack ? GoGame.black : GoGame.white;
+        _topC = bottomIsBlack ? GoGame.white : GoGame.black;
+        _bottomL = _bottomC == GoGame.black ? '黑棋' : '白棋';
+        _topL = _topC == GoGame.black ? '黑棋' : '白棋';
       }
-      _ai = GoAi(_aiPlayer, 19);
-      _game.setStartingPlayer(GoGame.black);
-      _bottomL = '你'; _topL = 'AI';
-    } else {
-      _bottomC = bottomIsBlack ? GoGame.black : GoGame.white;
-      _topC = bottomIsBlack ? GoGame.white : GoGame.black;
-      _bottomL = _bottomC == GoGame.black ? '黑棋' : '白棋';
-      _topL = _topC == GoGame.black ? '黑棋' : '白棋';
-    }
+    });
     Timer(const Duration(milliseconds: 500), _startPlaying);
   }
 

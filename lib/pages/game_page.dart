@@ -83,38 +83,40 @@ class _GamePageState extends State<GamePage> {
   void _finishLottery() {
     final bottomIsBlack = DateTime.now().millisecondsSinceEpoch % 2 == 0;
 
-    if (widget.isPvE) {
-      if (bottomIsBlack) {
-        _bottomColor = _isGobang ? GobangGame.black : TicTacToeGame.x;
-        _topColor = _isGobang ? GobangGame.white : TicTacToeGame.o;
-        _humanCol = _bottomColor;
-        _aiCol = _topColor;
+    setState(() {
+      if (widget.isPvE) {
+        if (bottomIsBlack) {
+          _bottomColor = _isGobang ? GobangGame.black : TicTacToeGame.x;
+          _topColor = _isGobang ? GobangGame.white : TicTacToeGame.o;
+          _humanCol = _bottomColor;
+          _aiCol = _topColor;
+        } else {
+          _bottomColor = _isGobang ? GobangGame.white : TicTacToeGame.o;
+          _topColor = _isGobang ? GobangGame.black : TicTacToeGame.x;
+          _humanCol = _bottomColor;
+          _aiCol = _topColor;
+        }
+        if (_isGobang) {
+          _gobangAI = GobangAI(_aiCol);
+          _gobangGame.setStartingPlayer(GobangGame.black);
+        } else {
+          _tttAI = TicTacToeAI(_aiCol);
+          _tttGame.setStartingPlayer(TicTacToeGame.x);
+        }
+        _bottomLabel = '你';
+        _topLabel = 'AI';
       } else {
-        _bottomColor = _isGobang ? GobangGame.white : TicTacToeGame.o;
-        _topColor = _isGobang ? GobangGame.black : TicTacToeGame.x;
-        _humanCol = _bottomColor;
-        _aiCol = _topColor;
+        if (_isGobang) {
+          _bottomColor = bottomIsBlack ? GobangGame.black : GobangGame.white;
+          _topColor = bottomIsBlack ? GobangGame.white : GobangGame.black;
+        } else {
+          _bottomColor = bottomIsBlack ? TicTacToeGame.x : TicTacToeGame.o;
+          _topColor = bottomIsBlack ? TicTacToeGame.o : TicTacToeGame.x;
+        }
+        _bottomLabel = _bottomColor == (_isGobang ? GobangGame.black : TicTacToeGame.x) ? '黑棋' : '白棋';
+        _topLabel = _topColor == (_isGobang ? GobangGame.black : TicTacToeGame.x) ? '黑棋' : '白棋';
       }
-      if (_isGobang) {
-        _gobangAI = GobangAI(_aiCol);
-        _gobangGame.setStartingPlayer(GobangGame.black);
-      } else {
-        _tttAI = TicTacToeAI(_aiCol);
-        _tttGame.setStartingPlayer(TicTacToeGame.x);
-      }
-      _bottomLabel = '你';
-      _topLabel = 'AI';
-    } else {
-      if (_isGobang) {
-        _bottomColor = bottomIsBlack ? GobangGame.black : GobangGame.white;
-        _topColor = bottomIsBlack ? GobangGame.white : GobangGame.black;
-      } else {
-        _bottomColor = bottomIsBlack ? TicTacToeGame.x : TicTacToeGame.o;
-        _topColor = bottomIsBlack ? TicTacToeGame.o : TicTacToeGame.x;
-      }
-      _bottomLabel = _bottomColor == (_isGobang ? GobangGame.black : TicTacToeGame.x) ? '黑棋' : '白棋';
-      _topLabel = _topColor == (_isGobang ? GobangGame.black : TicTacToeGame.x) ? '黑棋' : '白棋';
-    }
+    });
 
     Timer(const Duration(milliseconds: 500), () {
       setState(() {

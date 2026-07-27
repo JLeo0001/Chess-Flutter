@@ -91,6 +91,8 @@ class _ChineseChessGamePageState extends State<ChineseChessGamePage> {
     _game.placeAllPieces(_game.isFlipped);
     _game.setStartingPlayer(ChineseChessGame.red);
 
+    setState(() {});
+
     Timer(const Duration(milliseconds: 500), () {
       setState(() {
         _gameState = 2;
