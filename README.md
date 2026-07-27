@@ -55,11 +55,11 @@
 
 | 平台 | 构建产物 | 获取方式 |
 |:---|:---|---:|
-| 🌐 **Web (PWA)** | `build/web/` | 部署静态服务器，或通过 CI artifact 下载 |
-| 🐧 **Linux** | `build/linux/x64/release/bundle/` | CI artifact 或本地构建 |
+| 🌐 **Web (PWA)** | `Chess-Flutter-*-web.zip` | CI artifact，解压部署到任意静态服务器 |
+| 🐧 **Linux** | `Chess-Flutter-*-linux-x64.tar.gz` | CI artifact 或本地构建 |
 | 🪟 **Windows** | `Chess-Flutter-*-windows-x64.zip` | CI artifact 或本地构建 |
-| 🍎 **macOS** | `Runner.app`（`build/macos/.../Release/`） | CI artifact 或本地构建 |
-| 📱 **iOS** | `Runner.app`（需要签名才能安装） | 需要 Apple Developer 账号本地构建 |
+| 🍎 **macOS** | `弈-*-macos.zip`（内含 `.app`） | CI artifact 或本地构建 |
+| 📱 **iOS** | `弈-*-ios.ipa`（unsigned，需签名安装） | CI artifact 或本地构建（需 Apple Developer 账号） |
 
 > 所有平台的构建产物均可从 **[GitHub Actions](https://github.com/JLeo0001/Chess-Flutter/actions)** 的 CI artifact 下载。  
 > 正式发布版本见 **[GitHub Releases](https://github.com/JLeo0001/Chess-Flutter/releases)**。

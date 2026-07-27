@@ -192,8 +192,10 @@ jobs:
           - name: 🌐 Web (PWA)
             build: flutter build web --release --no-tree-shake-icons
             upload: web-pwa-${{ needs.version.outputs.tag }}
-            path: build/web/
-            pkg: ''
+            path: dist/Chess-Flutter-${{ needs.version.outputs.tag }}-web.zip
+            pkg: |
+              mkdir -p dist
+              cd build/web && zip -qr "../../dist/Chess-Flutter-${{ needs.version.outputs.tag }}-web.zip" .
           - name: 🐧 Linux (x64)
             build: |
               sudo apt-get update -qq && sudo apt-get install -y -qq cmake ninja-build libgtk-3-dev
