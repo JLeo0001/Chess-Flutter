@@ -190,7 +190,7 @@ jobs:
       matrix:
         target:
           - name: 🌐 Web (PWA)
-            build: flutter build web --release
+            build: flutter build web --release --no-tree-shake-icons
             upload: web-pwa-${{ needs.version.outputs.tag }}
             path: build/web/
             pkg: ''
