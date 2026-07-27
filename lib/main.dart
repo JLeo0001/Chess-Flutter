@@ -22,7 +22,6 @@ import 'pages/uno_game_page.dart';
 import 'pages/doudizhu_game_page.dart';
 import 'pages/go_game_page.dart';
 import 'pages/spider_game_page.dart';
-import 'widgets/theme_reveal.dart';
 
 void main() {
   WidgetsFlutterBinding.ensureInitialized();
@@ -73,10 +72,6 @@ class ChessApp extends StatefulWidget {
 
 class _ChessAppState extends State<ChessApp> {
   final _navigatorKey = GlobalKey<NavigatorState>();
-
-  void _toggleTheme(BuildContext context) {
-    context.read<ThemeProvider>().toggleManual();
-  }
 
   @override
   Widget build(BuildContext context) {
@@ -156,11 +151,7 @@ class _ChessAppState extends State<ChessApp> {
             }
           },
           builder: (context, child) {
-            return ThemeRipple(
-              key: ThemeRipple.globalKey,
-              onToggleTheme: () => _toggleTheme(context),
-              child: child ?? const SizedBox.shrink(),
-            );
+            return child ?? const SizedBox.shrink();
           },
         );
       },

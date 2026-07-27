@@ -35,7 +35,7 @@ class AboutPage extends StatelessWidget {
               Text('多合一棋牌游戏',
                   style: TextStyle(fontSize: 14, color: cs.onSurfaceVariant)),
               const SizedBox(height: 2),
-              Text('v1.0.1',
+              Text('v1.0.2',
                   style: TextStyle(fontSize: 12, color: cs.onSurfaceVariant)),
             ]),
           ),
@@ -76,10 +76,6 @@ class AboutPage extends StatelessWidget {
             child: Column(children: [
               for (final t in [
                 ('框架', 'Flutter 3.27 · Dart'),
-                ('状态管理', 'Provider'),
-                ('国际象棋引擎', 'Stockfish (UCI)'),
-                ('图标', 'Material You 动态取色'),
-                ('CI/CD', 'GitHub Actions'),
               ].indexed) ...[
                 if (t.$1 > 0) const Divider(height: 1, indent: 16),
                 ListTile(

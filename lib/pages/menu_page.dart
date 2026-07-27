@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 import '../models/theme_provider.dart';
-import '../widgets/theme_reveal.dart';
 
 class MenuPage extends StatefulWidget {
   const MenuPage({super.key});
@@ -13,7 +12,6 @@ class MenuPage extends StatefulWidget {
 
 class _MenuPageState extends State<MenuPage>
     with SingleTickerProviderStateMixin {
-  static final _themeBtnKey = GlobalKey();
   late final AnimationController _ctrl;
   late final List<Animation<double>> _cardAnimations;
 
@@ -53,21 +51,7 @@ class _MenuPageState extends State<MenuPage>
   }
 
   void _onThemeToggle() {
-    final renderBox =
-        _themeBtnKey.currentContext?.findRenderObject() as RenderBox?;
-    if (renderBox != null && renderBox.hasSize) {
-      final localPos = renderBox.localToGlobal(Offset.zero);
-      final center = Offset(
-        localPos.dx + renderBox.size.width / 2,
-        localPos.dy + renderBox.size.height / 2,
-      );
-      ThemeRipple.globalKey.currentState?.trigger(center);
-    } else {
-      final ctx = _themeBtnKey.currentContext;
-      if (ctx != null) {
-        Provider.of<ThemeProvider>(ctx, listen: false).toggleManual();
-      }
-    }
+    context.read<ThemeProvider>().toggleManual();
   }
 
   @override
@@ -87,7 +71,6 @@ class _MenuPageState extends State<MenuPage>
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
                   IconButton(
-                    key: _themeBtnKey,
                     icon: Icon(
                       night ? Icons.light_mode_outlined : Icons.dark_mode_outlined,
                       color: cs.primary,
