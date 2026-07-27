@@ -274,7 +274,11 @@ jobs:
         run: flutter pub get
 
       - name: Build Windows (release)
-        run: flutter build windows --release --cmake-args="-G" --cmake-args='"Visual Studio 17 2022"'
+        # msvc-dev-cmd 设置了完整 VS 环境，CMake 应自动检测
+        run: |
+          echo "VisualStudioVersion=$Env:VisualStudioVersion"
+          cmake --help 2>&1 | Select-String "Visual Studio"
+          flutter build windows --release
 
       - name: Package with ZIP
         run: |
