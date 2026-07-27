@@ -272,20 +272,22 @@ jobs:
 
       - name: Build Windows (release)
         run: |
-          # 第一步：触发 CMake config 生成（会失败，但 generated_config.cmake 就生成了）
-          $ErrorActionPreference = 'Continue'
-          flutter build windows --release 2>&1 | Out-Null
-          $ErrorActionPreference = 'Stop'
-          # 第二步：修正 generator
-          $config = "windows\flutter\ephemeral\generated_config.cmake"
-          Write-Host "=== Fixing generator in $config ==="
-          $content = Get-Content $config -Raw
-          $content = $content -replace
-            'set\(CMAKE_GENERATOR "Visual Studio 16 2019"',
-            'set(CMAKE_GENERATOR "Visual Studio 17 2022"'
-          Set-Content -Path $config -Value $content
-          Select-String "CMAKE_GENERATOR" $config
-          # 第三步：正式构建（Dart 编译有缓存，仅重跑 CMake + link）
+          # windows-latest 只有 VS 2025，Flutter 3.27 不识别，硬编码 VS 2019。
+          # 用 cmake 包装器：在真实 cmake 运行前修正 generated_config.cmake。
+          $cmakeReal = (Get-Command cmake).Source
+          $wrapperDir = "$env:TEMP\cmake_wrapper"
+          New-Item -ItemType Directory -Force -Path $wrapperDir | Out-Null
+          Set-Content -Path "$wrapperDir\cmake.bat" -Value @"
+          @echo off
+          set "config=windows\flutter\ephemeral\generated_config.cmake"
+          if exist "%config%" (
+              powershell -NoProfile -Command "(Get-Content '%config%') -replace 'Visual Studio 16 2019','Visual Studio 17 2022' | Set-Content '%config%'"
+          )
+          "$cmakeReal" %*
+"@
+          # 把 .BAT 优先级提到 .EXE 前面，让 cmake.bat 先被找到
+          $env:PATHEXT = ".BAT;$env:PATHEXT"
+          $env:PATH = "$wrapperDir;$env:PATH"
           flutter build windows --release
 
       - name: Package with ZIP
