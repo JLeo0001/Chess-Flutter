@@ -248,6 +248,9 @@ jobs:
           channel: stable
           cache: true
 
+      - name: Setup MSVC (Visual Studio)
+        uses: ilammy/msvc-dev-cmd@v1
+
       - name: Cache pub
         uses: actions/cache@v4
         with:
@@ -259,7 +262,7 @@ jobs:
         run: flutter pub get
 
       - name: Build Windows (release)
-        run: flutter build windows --release
+        run: flutter build windows --release --cmake-args="-G" --cmake-args='"Visual Studio 17 2022"'
 
       - name: Package with ZIP
         run: |
