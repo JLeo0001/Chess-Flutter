@@ -1,20 +1,66 @@
-name: Build Release APK
+name: Build & Release
 
 on:
   push:
     branches: [ main ]
+    tags: [ 'v*' ]
   pull_request:
     branches: [ main ]
   workflow_dispatch:
+    inputs:
+      version:
+        description: 'Override version tag (e.g. v1.0.3)'
+        required: false
+
+# ── 并发控制：同一分支新提交自动取消旧运行 ──
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
 
 env:
   FLUTTER_VERSION: '3.27.x'
-  GRADLE_OPTS: '-Dorg.gradle.daemon=false -Dorg.gradle.parallel=true -Dorg.gradle.caching=true -Dorg.gradle.configureondemand=true'
+
+# ── 共享步骤：跨平台一致的 Flutter 初始化 ──
+#
+# 使用 YAML 锚点避免重复，但注意 composite 级别的锚点在不同 job 间不共享
+# （每个 job 有自己的 `steps`），所以这里只在同 job 内部用锚点。
 
 jobs:
-  build:
+  ##############################################################################
+  #  Version Detection  ── 一劳永逸算出版本号
+  ##############################################################################
+  version:
+    name: Detect version
     runs-on: ubuntu-latest
+    outputs:
+      tag: ${{ steps.v.outputs.tag }}
+      number: ${{ steps.v.outputs.number }}
+    steps:
+      - uses: actions/checkout@v4
+      - id: v
+        run: |
+          # 优先用 workflow_dispatch 传入的版本
+          if [ -n "${{ github.event.inputs.version }}" ]; then
+            echo "tag=${{ github.event.inputs.version }}" >> "$GITHUB_OUTPUT"
+            echo "number=${tag#v}" >> "$GITHUB_OUTPUT"
+          # GitHub Release tag 触发
+          elif [[ "${{ github.ref }}" == refs/tags/v* ]]; then
+            echo "tag=${GITHUB_REF_NAME}" >> "$GITHUB_OUTPUT"
+            echo "number=${GITHUB_REF_NAME#v}" >> "$GITHUB_OUTPUT"
+          # 从 pubspec.yaml 读取
+          else
+            VER=$(grep '^version: ' pubspec.yaml | sed 's/version: //')
+            echo "tag=v$VER" >> "$GITHUB_OUTPUT"
+            echo "number=$VER" >> "$GITHUB_OUTPUT"
+          fi
 
+  ##############################################################################
+  #  Android  (ubuntu + Java + NDK)
+  ##############################################################################
+  android:
+    name: 📱 Android APK
+    needs: version
+    runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
 
@@ -78,25 +124,23 @@ jobs:
             echo "No keystore secrets set — building with debug signing"
           fi
 
-      - name: Build universal APK (warm up Gradle & compile Dart)
-        run: |
-          flutter build apk --release --no-tree-shake-icons
+      - name: Build split APKs
+        run: flutter build apk --release --split-per-abi --no-tree-shake-icons
 
-      - name: Build split APKs (per architecture, reuses build cache)
-        run: |
-          flutter build apk --release --split-per-abi --no-tree-shake-icons
+      - name: Build universal APK (reuses cached compilation)
+        run: flutter build apk --release --no-tree-shake-icons
 
-      - name: Package APKs
+      - name: Package & rename APKs
         run: |
+          VER=${{ needs.version.outputs.tag }}
           mkdir -p output
-          # Split APKs — 改名为清晰标识
           for apk in build/app/outputs/flutter-apk/app-*-release.apk; do
             f=$(basename "$apk")
             case "$f" in
-              app-armeabi-v7a-release.apk)   out="Chess-Flutter-v1.0.2-arm32.apk" ;;
-              app-arm64-v8a-release.apk)     out="Chess-Flutter-v1.0.2-arm64.apk" ;;
-              app-x86_64-release.apk)        out="Chess-Flutter-v1.0.2-x86_64.apk" ;;
-              app-release.apk)               out="Chess-Flutter-v1.0.2-universal.apk" ;;
+              app-armeabi-v7a-release.apk)   out="Chess-Flutter-${VER}-arm32.apk" ;;
+              app-arm64-v8a-release.apk)     out="Chess-Flutter-${VER}-arm64.apk" ;;
+              app-x86_64-release.apk)        out="Chess-Flutter-${VER}-x86_64.apk" ;;
+              app-release.apk)               out="Chess-Flutter-${VER}-universal.apk" ;;
               *)                             continue ;;
             esac
             cp "$apk" "output/$out"
@@ -106,37 +150,182 @@ jobs:
       - name: Upload universal APK
         uses: actions/upload-artifact@v4
         with:
-          name: Chess-Flutter-universal
-          path: output/Chess-Flutter-v1.0.2-universal.apk
-          compression-level: 0
-          retention-days: 30
-
-      - name: Upload arm32 APK
-        uses: actions/upload-artifact@v4
-        with:
-          name: Chess-Flutter-arm32
-          path: output/Chess-Flutter-v1.0.2-arm32.apk
+          name: android-universal-${{ needs.version.outputs.tag }}
+          path: output/Chess-Flutter-${{ needs.version.outputs.tag }}-universal.apk
           compression-level: 0
           retention-days: 30
 
       - name: Upload arm64 APK
         uses: actions/upload-artifact@v4
         with:
-          name: Chess-Flutter-arm64
-          path: output/Chess-Flutter-v1.0.2-arm64.apk
+          name: android-arm64-${{ needs.version.outputs.tag }}
+          path: output/Chess-Flutter-${{ needs.version.outputs.tag }}-arm64.apk
+          compression-level: 0
+          retention-days: 30
+
+      - name: Upload arm32 APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: android-arm32-${{ needs.version.outputs.tag }}
+          path: output/Chess-Flutter-${{ needs.version.outputs.tag }}-arm32.apk
           compression-level: 0
           retention-days: 30
 
       - name: Upload x86_64 APK
         uses: actions/upload-artifact@v4
         with:
-          name: Chess-Flutter-x86_64
-          path: output/Chess-Flutter-v1.0.2-x86_64.apk
+          name: android-x86_64-${{ needs.version.outputs.tag }}
+          path: output/Chess-Flutter-${{ needs.version.outputs.tag }}-x86_64.apk
           compression-level: 0
           retention-days: 30
 
-      - name: Cleanup Gradle cache
-        if: always()
+  ##############################################################################
+  #  Ubuntu Matrix  ── Web + Linux （共用一个 ubuntu runner，节省排队）
+  ##############################################################################
+  ubuntu-builds:
+    name: ${{ matrix.target.name }}
+    needs: version
+    strategy:
+      fail-fast: false
+      matrix:
+        target:
+          - name: 🌐 Web (PWA)
+            build: flutter build web --release
+            upload: web-pwa-${{ needs.version.outputs.tag }}
+            path: build/web/
+          - name: 🐧 Linux (AppImage)
+            build: |
+              sudo apt-get update -qq && sudo apt-get install -y -qq cmake ninja-build libgtk-3-dev
+              flutter build linux --release
+            upload: linux-x64-${{ needs.version.outputs.tag }}
+            path: build/linux/x64/release/bundle/
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          flutter-version: ${{ env.FLUTTER_VERSION }}
+          channel: stable
+          cache: true
+
+      - name: Cache pub
+        uses: actions/cache@v4
+        with:
+          path: ~/.pub-cache
+          key: pub-${{ runner.os }}-${{ hashFiles('pubspec.yaml') }}
+          restore-keys: pub-${{ runner.os }}-
+
+      - name: Install Flutter dependencies
+        run: flutter pub get
+
+      - name: Build
+        run: ${{ matrix.target.build }}
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ matrix.target.upload }}
+          path: ${{ matrix.target.path }}
+          compression-level: 0
+          retention-days: 30
+
+  ##############################################################################
+  #  Windows  (windows-latest)
+  ##############################################################################
+  windows:
+    name: 🪟 Windows (x64)
+    needs: version
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          flutter-version: ${{ env.FLUTTER_VERSION }}
+          channel: stable
+          cache: true
+
+      - name: Cache pub
+        uses: actions/cache@v4
+        with:
+          path: ~/.pub-cache
+          key: pub-${{ runner.os }}-${{ hashFiles('pubspec.yaml') }}
+          restore-keys: pub-${{ runner.os }}-
+
+      - name: Install Flutter dependencies
+        run: flutter pub get
+
+      - name: Build Windows (release)
+        run: flutter build windows --release
+
+      - name: Package with ZIP
         run: |
-          rm -rf ~/.gradle/caches/journal-* 2>/dev/null || true
-          rm -rf ~/.gradle/caches/*/fileHashes/* 2>/dev/null || true
+          Compress-Archive -Path build/windows/runner/Release/* -DestinationPath Chess-Flutter-${{ needs.version.outputs.tag }}-windows-x64.zip
+        shell: pwsh
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: windows-x64-${{ needs.version.outputs.tag }}
+          path: Chess-Flutter-${{ needs.version.outputs.tag }}-windows-x64.zip
+          compression-level: 0
+          retention-days: 30
+
+  ##############################################################################
+  #  macOS + iOS  (macos-latest 共享，顺序执行以复用 Flutter 缓存)
+  ##############################################################################
+  apple-builds:
+    name: ${{ matrix.target.name }}
+    needs: version
+    strategy:
+      fail-fast: false
+      matrix:
+        target:
+          - name: 🍎 macOS (x64)
+            build: flutter build macos --release
+            upload: macos-x64-${{ needs.version.outputs.tag }}
+            path: build/macos/Build/Products/Release/
+            pkg: |
+              mkdir -p dist
+              ditto build/macos/Build/Products/Release/Runner.app dist/弈.app
+          - name: 📱 iOS (arm64)
+            build: |
+              cd ios && pod install && cd ..
+              flutter build ios --release --no-codesign
+            upload: ios-arm64-${{ needs.version.outputs.tag }}
+            path: build/ios/iphoneos/
+            pkg: ''
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          flutter-version: ${{ env.FLUTTER_VERSION }}
+          channel: stable
+          cache: true
+
+      - name: Cache pub
+        uses: actions/cache@v4
+        with:
+          path: ~/.pub-cache
+          key: pub-${{ runner.os }}-${{ hashFiles('pubspec.yaml') }}
+          restore-keys: pub-${{ runner.os }}-
+
+      - name: Install Flutter dependencies
+        run: flutter pub get
+
+      - name: Build
+        run: ${{ matrix.target.build }}
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ matrix.target.upload }}
+          path: ${{ matrix.target.path }}
+          compression-level: 0
+          retention-days: 30

@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
@@ -26,7 +27,10 @@ import 'third_party/circular_theme_reveal/circular_theme_reveal.dart';
 
 void main() {
   WidgetsFlutterBinding.ensureInitialized();
-  SystemChrome.setEnabledSystemUIMode(SystemUiMode.edgeToEdge);
+  // 仅在 Android / iOS 上设置沉浸式状态栏
+  if (!kIsWeb) {
+    SystemChrome.setEnabledSystemUIMode(SystemUiMode.edgeToEdge);
+  }
 
   // 日志系统（持久化到文件）
   final lp = LogProvider.ensure();
