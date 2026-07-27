@@ -380,10 +380,13 @@ jobs:
       - name: Build Windows (release)
         run: |
           # VS 2026 装了但没有 VS 2019/2022 generator。
-          # 用 CMAKE_GENERATOR_INSTANCE 让 CMake 直接用 VS 2026 工具链。
+          # CMake 的 CMAKE_GENERATOR_INSTANCE 仅在 CMAKE_GENERATOR 环境变量
+          # 设置时才会生效（env var，不是 -G 命令行参数）。
+          # Flutter 硬编码了 -G "Visual Studio 16 2019"，所以这里用同样的值。
           $vsPath = & "${env:ProgramFiles(x86)}\Microsoft Visual Studio\Installer\vswhere.exe" `
             -latest -property installationPath
           Write-Host "VS installed at: $vsPath"
+          $env:CMAKE_GENERATOR = "Visual Studio 16 2019"
           $env:CMAKE_GENERATOR_INSTANCE = $vsPath
           flutter build windows --release
 
