@@ -13,7 +13,7 @@ class MenuPage extends StatefulWidget {
 
 class _MenuPageState extends State<MenuPage>
     with SingleTickerProviderStateMixin {
-  static final _themeBtnKey = GlobalKey();
+  final _themeBtnKey = GlobalKey();
   late final AnimationController _ctrl;
   late final List<Animation<double>> _cardAnimations;
 

@@ -27,42 +27,57 @@ class ThemeReveal extends StatefulWidget {
 class ThemeRevealState extends State<ThemeReveal>
     with SingleTickerProviderStateMixin {
   Offset? _center;
-  late AnimationController _ctrl;
-  late Animation<double> _anim;
+  AnimationController? _ctrl;
+  Animation<double>? _anim;
   Color _oldBg = Colors.transparent;
   double _maxRadius = 0;
 
   void trigger(Offset center) {
+    if (!mounted) return;
+
+    // 释放上一个动画控制器，防止多 controller 并发导致 setState 风暴
+    _ctrl?.dispose();
+    _ctrl = null;
+    _anim = null;
+
     // 记录按钮位置和切换前的背景色
-    final ctx = context;
-    _oldBg = Theme.of(ctx).colorScheme.surface;
+    _oldBg = Theme.of(context).colorScheme.surface;
     _center = center;
 
-    final size = MediaQuery.of(ctx).size;
+    final size = MediaQuery.of(context).size;
     final dx = math.max(center.dx, size.width - center.dx);
     final dy = math.max(center.dy, size.height - center.dy);
     _maxRadius = math.sqrt(dx * dx + dy * dy) + 20; // 稍微多出一点防白边
 
-    // 先切主题，再播动画
+    // 先切主题（会触发同步重建），再播动画
     widget.onToggleTheme();
+
+    if (!mounted) return;
 
     _ctrl = AnimationController(
       vsync: this,
       duration: const Duration(milliseconds: 600),
     );
-    _anim = CurvedAnimation(parent: _ctrl, curve: Curves.fastOutSlowIn);
-    _ctrl.addListener(() => setState(() {}));
-    _ctrl.addStatusListener((s) {
-      if (s == AnimationStatus.completed) {
+    _anim = CurvedAnimation(parent: _ctrl!, curve: Curves.fastOutSlowIn);
+    _ctrl!.addListener(() {
+      if (mounted) setState(() {});
+    });
+    _ctrl!.addStatusListener((s) {
+      if (s == AnimationStatus.completed && mounted) {
         setState(() => _center = null);
+        _ctrl?.dispose();
+        _ctrl = null;
+        _anim = null;
       }
     });
-    _ctrl.forward();
+    _ctrl!.forward();
   }
 
   @override
   void dispose() {
-    _ctrl.dispose();
+    _ctrl?.dispose();
+    _ctrl = null;
+    _anim = null;
     super.dispose();
   }
 
@@ -71,13 +86,13 @@ class ThemeRevealState extends State<ThemeReveal>
     return Stack(
       children: [
         widget.child,
-        if (_center != null && _anim.value < 1.0)
+        if (_center != null && _anim != null && _anim!.value < 1.0)
           Positioned.fill(
             child: IgnorePointer(
               child: CustomPaint(
                 painter: _CircleRevealPainter(
                   center: _center!,
-                  radius: _maxRadius * _anim.value,
+                  radius: _maxRadius * _anim!.value,
                   color: _oldBg,
                 ),
               ),
