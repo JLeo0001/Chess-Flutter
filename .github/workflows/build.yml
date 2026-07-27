@@ -196,19 +196,46 @@ jobs:
             pkg: |
               mkdir -p dist
               cd build/web && zip -qr "../../dist/Chess-Flutter-${{ needs.version.outputs.tag }}-web.zip" .
-          - name: 🐧 Linux (x64)
+          - name: 🐧 Linux (AppImage)
             build: |
               sudo apt-get update -qq && sudo apt-get install -y -qq cmake ninja-build libgtk-3-dev
               flutter build linux --release
             upload: linux-x64-${{ needs.version.outputs.tag }}
-            path: dist/Chess-Flutter-${{ needs.version.outputs.tag }}-linux-x64.tar.gz
+            path: dist/Chess-Flutter-${{ needs.version.outputs.tag }}-x86_64.AppImage
             pkg: |
-              # Strip 剥离调试符号
-              strip build/linux/x64/release/bundle/chess_app 2>/dev/null || true
-              # tar.gz 打包（比 ZIP 更小）
-              mkdir -p dist
-              tar czf dist/Chess-Flutter-${{ needs.version.outputs.tag }}-linux-x64.tar.gz \
-                -C build/linux/x64/release/bundle/ .
+              BUNDLE=build/linux/x64/release/bundle
+              # Strip 二进制
+              strip "$BUNDLE/chess_app" 2>/dev/null || true
+              # 构建 AppDir：整个 bundle 丢进 usr/
+              mkdir -p dist/AppDir/usr
+              cp -r "$BUNDLE"/* dist/AppDir/usr/
+              # 图标
+              cp assets/app_icon_256.png dist/AppDir/chess_app.png
+              # .desktop
+              cat > dist/AppDir/chess_app.desktop << 'DESKTOP'
+[Desktop Entry]
+Name=弈
+Comment=Chess & Board Games
+Exec=chess_app
+Icon=chess_app
+Type=Application
+Categories=Game;BoardGame;
+DESKTOP
+              # AppRun 入口
+              cat > dist/AppDir/AppRun << 'APPRUN'
+#!/bin/bash
+HERE="$(dirname "$(readlink -f "${0}")")"
+export LD_LIBRARY_PATH="$HERE/usr/lib:$HERE/usr:$LD_LIBRARY_PATH"
+exec "$HERE/usr/chess_app" "$@"
+APPRUN
+              chmod +x dist/AppDir/AppRun
+              # 下载 appimagetool 并构建 AppImage
+              wget -q "https://github.com/AppImage/AppImageKit/releases/download/continuous/appimagetool-x86_64.AppImage" \
+                -O /tmp/appimagetool
+              chmod +x /tmp/appimagetool
+              /tmp/appimagetool --appimage-extract-and-run dist/AppDir \
+                "dist/Chess-Flutter-${{ needs.version.outputs.tag }}-x86_64.AppImage"
+              rm -rf dist/AppDir
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -318,13 +345,18 @@ jobs:
           - name: 🍎 macOS (x64)
             build: flutter build macos --release
             upload: macos-x64-${{ needs.version.outputs.tag }}
-            path: dist/弈-${{ needs.version.outputs.tag }}-macos.zip
+            path: dist/弈-${{ needs.version.outputs.tag }}-macos.dmg
             pkg: |
               APP=build/macos/Build/Products/Release/chess_app.app
               # Strip debug symbols
               strip -S "${APP}/Contents/MacOS/chess_app" 2>/dev/null || true
-              mkdir -p dist
-              ditto -c -k --keepParent "$APP" "dist/弈-${{ needs.version.outputs.tag }}-macos.zip"
+              # 创建标准 DMG（带 Applications 拖拽快捷方式）
+              mkdir -p dist/dmg
+              cp -R "$APP" dist/dmg/
+              ln -s /Applications dist/dmg/Applications
+              hdiutil create -volname "弈" -srcfolder dist/dmg \
+                -ov -format UDZO "dist/弈-${{ needs.version.outputs.tag }}-macos.dmg"
+              rm -rf dist/dmg
           - name: 📱 iOS (arm64)
             build: |
               cd ios && pod install && cd ..
