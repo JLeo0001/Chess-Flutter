@@ -13,7 +13,7 @@
   <img src="https://img.shields.io/badge/Android-8%2B-34A853?logo=android&logoColor=white&style=flat-square" alt="Android 8+"/>
   <img src="https://img.shields.io/badge/iOS-13%2B-000000?logo=apple&logoColor=white&style=flat-square" alt="iOS 13+"/>
   <img src="https://img.shields.io/badge/Web-PWA-4285F4?logo=googlechrome&logoColor=white&style=flat-square" alt="Web PWA"/>
-  <img src="https://img.shields.io/badge/Windows-10%2B-0078D6?logo=windows&logoColor=white&style=flat-square" alt="Windows 10+"/>
+  <img src="https://img.shields.io/badge/Windows-7%2B-0078D6?logo=windows&logoColor=white&style=flat-square" alt="Windows 7+"/>
   <img src="https://img.shields.io/badge/Linux-GTK3-E95420?logo=linux&logoColor=white&style=flat-square" alt="Linux"/>
   <img src="https://img.shields.io/badge/macOS-12%2B-000000?logo=apple&logoColor=white&style=flat-square" alt="macOS 12+"/>
 </p>
@@ -126,7 +126,7 @@
 | **牌类引擎** | poker_solver · card_game |
 | **日夜切换** | Custom CircularReveal (800ms) |
 | **CI/CD** | GitHub Actions（6 平台并行构建） |
-| **最低支持** | Android 8.0 · iOS 13.0 · Windows 10 · macOS 12 · Linux GTK3 |
+| **最低支持** | Android 8.0 · iOS 13.0 · Windows 7 SP1+ · macOS 12 · Linux GTK3 |
 
 ### 跨平台架构
 
