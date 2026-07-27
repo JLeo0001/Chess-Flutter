@@ -180,62 +180,11 @@ jobs:
           retention-days: 30
 
   ##############################################################################
-  #  Ubuntu Matrix  ── Web + Linux
+  #  Web (PWA)
   ##############################################################################
-  ubuntu-builds:
-    name: ${{ matrix.target.name }}
+  web:
+    name: 🌐 Web (PWA)
     needs: version
-    strategy:
-      fail-fast: false
-      matrix:
-        target:
-          - name: 🌐 Web (PWA)
-            build: flutter build web --release --no-tree-shake-icons
-            upload: web-pwa-${{ needs.version.outputs.tag }}
-            path: dist/Chess-Flutter-${{ needs.version.outputs.tag }}-web.zip
-            pkg: |
-              mkdir -p dist
-              cd build/web && zip -qr "../../dist/Chess-Flutter-${{ needs.version.outputs.tag }}-web.zip" .
-          - name: 🐧 Linux (AppImage)
-            build: |
-              sudo apt-get update -qq && sudo apt-get install -y -qq cmake ninja-build libgtk-3-dev
-              flutter build linux --release
-            upload: linux-x64-${{ needs.version.outputs.tag }}
-            path: dist/Chess-Flutter-${{ needs.version.outputs.tag }}-x86_64.AppImage
-            pkg: |
-              BUNDLE=build/linux/x64/release/bundle
-              # Strip 二进制
-              strip "$BUNDLE/chess_app" 2>/dev/null || true
-              # 构建 AppDir：整个 bundle 丢进 usr/
-              mkdir -p dist/AppDir/usr
-              cp -r "$BUNDLE"/* dist/AppDir/usr/
-              # 图标
-              cp assets/app_icon_256.png dist/AppDir/chess_app.png
-              # .desktop
-              cat > dist/AppDir/chess_app.desktop << 'DESKTOP'
-[Desktop Entry]
-Name=弈
-Comment=Chess & Board Games
-Exec=chess_app
-Icon=chess_app
-Type=Application
-Categories=Game;BoardGame;
-DESKTOP
-              # AppRun 入口
-              cat > dist/AppDir/AppRun << 'APPRUN'
-#!/bin/bash
-HERE="$(dirname "$(readlink -f "${0}")")"
-export LD_LIBRARY_PATH="$HERE/usr/lib:$HERE/usr:$LD_LIBRARY_PATH"
-exec "$HERE/usr/chess_app" "$@"
-APPRUN
-              chmod +x dist/AppDir/AppRun
-              # 下载 appimagetool 并构建 AppImage
-              wget -q "https://github.com/AppImage/AppImageKit/releases/download/continuous/appimagetool-x86_64.AppImage" \
-                -O /tmp/appimagetool
-              chmod +x /tmp/appimagetool
-              /tmp/appimagetool --appimage-extract-and-run dist/AppDir \
-                "dist/Chess-Flutter-${{ needs.version.outputs.tag }}-x86_64.AppImage"
-              rm -rf dist/AppDir
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -257,18 +206,171 @@ APPRUN
       - name: Install Flutter dependencies
         run: flutter pub get
 
-      - name: Build
-        run: ${{ matrix.target.build }}
+      - name: Build Web
+        run: flutter build web --release --no-tree-shake-icons
 
-      - name: Package
-        if: "matrix.target.pkg != ''"
-        run: ${{ matrix.target.pkg }}
+      - name: Package ZIP
+        run: |
+          cd build/web && zip -qr "../../dist/Chess-Flutter-${{ needs.version.outputs.tag }}-web.zip" .
 
       - name: Upload artifact
         uses: actions/upload-artifact@v4
         with:
-          name: ${{ matrix.target.upload }}
-          path: ${{ matrix.target.path }}
+          name: web-pwa-${{ needs.version.outputs.tag }}
+          path: dist/Chess-Flutter-${{ needs.version.outputs.tag }}-web.zip
+          compression-level: 0
+          retention-days: 30
+
+  ##############################################################################
+  #  Linux  — 多格式安装包
+  ##############################################################################
+  linux:
+    name: 🐧 Linux
+    needs: version
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          flutter-version: ${{ env.FLUTTER_VERSION }}
+          channel: stable
+          cache: true
+
+      - name: Cache pub
+        uses: actions/cache@v4
+        with:
+          path: ~/.pub-cache
+          key: pub-${{ runner.os }}-${{ hashFiles('pubspec.yaml') }}
+          restore-keys: pub-${{ runner.os }}-
+
+      - name: Install Linux deps
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq cmake ninja-build libgtk-3-dev rpm
+
+      - name: Install Flutter dependencies
+        run: flutter pub get
+
+      - name: Build Linux (release)
+        run: flutter build linux --release
+
+      - name: Package — AppImage
+        run: |
+          VER=${{ needs.version.outputs.tag }}
+          BUNDLE=build/linux/x64/release/bundle
+          strip "$BUNDLE/chess_app" 2>/dev/null || true
+          mkdir -p dist/appdir/usr
+          cp -r "$BUNDLE"/* dist/appdir/usr/
+          cp assets/app_icon_256.png dist/appdir/chess_app.png
+          cat > dist/appdir/chess_app.desktop << 'DESKTOP'
+[Desktop Entry]
+Name=弈
+Comment=Chess & Board Games
+Exec=chess_app
+Icon=chess_app
+Type=Application
+Categories=Game;BoardGame;
+DESKTOP
+          cat > dist/appdir/AppRun << 'APPRUN'
+#!/bin/bash
+HERE="$(dirname "$(readlink -f "${0}")")"
+export LD_LIBRARY_PATH="$HERE/usr/lib:$HERE/usr:$LD_LIBRARY_PATH"
+exec "$HERE/usr/chess_app" "$@"
+APPRUN
+          chmod +x dist/appdir/AppRun
+          wget -q "https://github.com/AppImage/AppImageKit/releases/download/continuous/appimagetool-x86_64.AppImage" \
+            -O /tmp/appimagetool
+          chmod +x /tmp/appimagetool
+          /tmp/appimagetool --appimage-extract-and-run dist/appdir \
+            "dist/Chess-Flutter-${VER}-x86_64.AppImage"
+
+      - name: Package — .deb (Debian / Ubuntu)
+        run: |
+          VER=${{ needs.version.outputs.tag }}
+          VNUM=${VER#v}
+          BUNDLE=build/linux/x64/release/bundle
+          PKG=dist/deb/chess_app_${VNUM}_amd64
+          mkdir -p "$PKG/DEBIAN"
+          mkdir -p "$PKG/usr/bin"
+          mkdir -p "$PKG/usr/lib/chess_app"
+          mkdir -p "$PKG/usr/share/applications"
+          mkdir -p "$PKG/usr/share/icons/hicolor/256x256/apps"
+          # 二进制 + 库
+          cp "$BUNDLE/chess_app" "$PKG/usr/bin/"
+          cp "$BUNDLE"/lib*.so "$PKG/usr/lib/chess_app/" 2>/dev/null || true
+          cp -r "$BUNDLE/data" "$PKG/usr/lib/chess_app/" 2>/dev/null || true
+          # desktop + icon
+          cp assets/app_icon_256.png "$PKG/usr/share/icons/hicolor/256x256/apps/chess_app.png"
+          cat > "$PKG/usr/share/applications/chess_app.desktop" << DESKTOP
+[Desktop Entry]
+Name=弈
+Comment=Chess & Board Games
+Exec=chess_app
+Icon=chess_app
+Type=Application
+Categories=Game;BoardGame;
+Terminal=false
+DESKTOP
+          # control
+          cat > "$PKG/DEBIAN/control" << CONTROL
+Package: chess-app
+Version: $VNUM
+Section: games
+Priority: optional
+Architecture: amd64
+Depends: libgtk-3-0 (>= 3.24)
+Maintainer: JasonLeoZhou <jleo0001@github.com>
+Description: 弈 — Chess & Board Games
+ All-in-one board game collection with 10 classic games,
+ built-in AI opponents, and day/night themes.
+CONTROL
+          # wrapper script for LD_LIBRARY_PATH
+          cat > "$PKG/usr/bin/chess_app" << 'WRAPPER'
+#!/bin/bash
+HERE="$(dirname "$(readlink -f "${0}")")"
+export LD_LIBRARY_PATH="/usr/lib/chess_app:$LD_LIBRARY_PATH"
+exec "/usr/lib/chess_app/chess_app" "$@"
+WRAPPER
+          chmod +x "$PKG/usr/bin/chess_app"
+          mv "$PKG/usr/bin/chess_app" "$PKG/usr/lib/chess_app/chess_app"
+          # 重新生成 wrapper
+          cat > "$PKG/usr/bin/chess_app" << 'WRAPPER'
+#!/bin/bash
+export LD_LIBRARY_PATH="/usr/lib/chess_app:$LD_LIBRARY_PATH"
+exec "/usr/lib/chess_app/chess_app" "$@"
+WRAPPER
+          chmod +x "$PKG/usr/bin/chess_app"
+          dpkg-deb --build "$PKG"
+
+      - name: Package — .tar.gz (通用)
+        run: |
+          VER=${{ needs.version.outputs.tag }}
+          tar czf "dist/Chess-Flutter-${VER}-linux-x64.tar.gz" \
+            -C build/linux/x64/release/bundle .
+
+      - name: Upload AppImage
+        uses: actions/upload-artifact@v4
+        with:
+          name: linux-AppImage-${{ needs.version.outputs.tag }}
+          path: dist/Chess-Flutter-${{ needs.version.outputs.tag }}-x86_64.AppImage
+          compression-level: 0
+          retention-days: 30
+
+      - name: Upload .deb
+        uses: actions/upload-artifact@v4
+        with:
+          name: linux-deb-${{ needs.version.outputs.tag }}
+          path: dist/deb/*.deb
+          compression-level: 0
+          retention-days: 30
+
+      - name: Upload .tar.gz
+        uses: actions/upload-artifact@v4
+        with:
+          name: linux-tar.gz-${{ needs.version.outputs.tag }}
+          path: dist/Chess-Flutter-${{ needs.version.outputs.tag }}-linux-x64.tar.gz
           compression-level: 0
           retention-days: 30
 

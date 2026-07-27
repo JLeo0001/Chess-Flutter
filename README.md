@@ -56,7 +56,7 @@
 | 平台 | 构建产物 | 获取方式 |
 |:---|:---|---:|
 | 🌐 **Web (PWA)** | `Chess-Flutter-*-web.zip` | CI artifact，解压部署到任意静态服务器 |
-| 🐧 **Linux** | `Chess-Flutter-*-x86_64.AppImage` | 下载 → `chmod +x` → 双击运行 |
+| 🐧 **Linux** | `*-x86_64.AppImage` / `*.deb` / `*.tar.gz` | **AppImage**: 双击运行 · **deb**: `sudo dpkg -i` · **tar.gz**: 解压运行 |
 | 🪟 **Windows** | `Chess-Flutter-*-windows-x64.zip` | 解压 → 运行 `chess_app.exe` |
 | 🍎 **macOS** | `弈-*-macos.dmg` | 双击 → 拖到 Applications 文件夹 |
 | 📱 **iOS** | `弈-*-ios.ipa`（unsigned，需签名安装） | CI artifact 或本地构建（需 Apple Developer 账号） |
