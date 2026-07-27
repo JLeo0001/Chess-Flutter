@@ -59,7 +59,7 @@
 | 🐧 **Linux** | `*-x86_64.AppImage` / `*.deb` / `*.tar.gz` | **AppImage**: 双击运行 · **deb**: `sudo dpkg -i` · **tar.gz**: 解压运行 |
 | 🪟 **Windows** | `Chess-Flutter-*-windows-x64.zip` | 解压 → 运行 `chess_app.exe` |
 | 🍎 **macOS** | `弈-*-macos.dmg` | 双击 → 拖到 Applications 文件夹 |
-| 📱 **iOS** | `弈-*-ios.ipa`（unsigned，需签名安装） | CI artifact 或本地构建（需 Apple Developer 账号） |
+| 📱 **iOS** | `弈-*-ios.app.zip` · `弈-*-ios.ipa` | **.app.zip**: Xcode → Devices 拖入 · **.ipa**: SideLoadly / AltStore |
 
 > 所有平台的构建产物均可从 **[GitHub Actions](https://github.com/JLeo0001/Chess-Flutter/actions)** 的 CI artifact 下载。  
 > 正式发布版本见 **[GitHub Releases](https://github.com/JLeo0001/Chess-Flutter/releases)**。

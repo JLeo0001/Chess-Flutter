@@ -440,9 +440,13 @@ jobs:
             build: |
               cd ios && pod install && cd ..
               flutter build ios --release --no-codesign
-            upload: ios-arm64-${{ needs.version.outputs.tag }}
-            path: dist/弈-${{ needs.version.outputs.tag }}-ios.ipa
+            upload: ios-${{ needs.version.outputs.tag }}
+            path: dist/
             pkg: |
+              # .app（开发者用 Xcode / ios-deploy 安装）
+              ditto -c -k --keepParent build/ios/iphoneos/Runner.app \
+                "dist/弈-${{ needs.version.outputs.tag }}-ios.app.zip"
+              # .ipa（unsigned，侧载用）
               mkdir -p dist/Payload
               cp -r build/ios/iphoneos/Runner.app dist/Payload/
               cd dist && zip -qr "弈-${{ needs.version.outputs.tag }}-ios.ipa" Payload/
