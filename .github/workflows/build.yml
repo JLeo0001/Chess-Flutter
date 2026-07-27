@@ -264,21 +264,14 @@ jobs:
           mkdir -p dist/appdir/usr
           cp -r "$BUNDLE"/* dist/appdir/usr/
           cp assets/app_icon_256.png dist/appdir/chess_app.png
-          cat > dist/appdir/chess_app.desktop << 'DESKTOP'
-[Desktop Entry]
-Name=弈
-Comment=Chess & Board Games
-Exec=chess_app
-Icon=chess_app
-Type=Application
-Categories=Game;BoardGame;
-DESKTOP
-          cat > dist/appdir/AppRun << 'APPRUN'
-#!/bin/bash
-HERE="$(dirname "$(readlink -f "${0}")")"
-export LD_LIBRARY_PATH="$HERE/usr/lib:$HERE/usr:$LD_LIBRARY_PATH"
-exec "$HERE/usr/chess_app" "$@"
-APPRUN
+          # 用 printf 写入，避免 YAML 解析 << & > 等特殊字符
+          printf '%s\n' '[Desktop Entry]' 'Name=弈' 'Comment=Chess Board Games' \
+            'Exec=chess_app' 'Icon=chess_app' 'Type=Application' \
+            'Categories=Game;BoardGame;' > dist/appdir/chess_app.desktop
+          printf '%s\n' '#!/bin/bash' \
+            'HERE="$(dirname "$(readlink -f "${0}")")"' \
+            'export LD_LIBRARY_PATH="$HERE/usr/lib:$HERE/usr:$LD_LIBRARY_PATH"' \
+            'exec "$HERE/usr/chess_app" "$@"' > dist/appdir/AppRun
           chmod +x dist/appdir/AppRun
           wget -q "https://github.com/AppImage/AppImageKit/releases/download/continuous/appimagetool-x86_64.AppImage" \
             -O /tmp/appimagetool
@@ -303,44 +296,26 @@ APPRUN
           cp -r "$BUNDLE/data" "$PKG/usr/lib/chess_app/" 2>/dev/null || true
           # desktop + icon
           cp assets/app_icon_256.png "$PKG/usr/share/icons/hicolor/256x256/apps/chess_app.png"
-          cat > "$PKG/usr/share/applications/chess_app.desktop" << DESKTOP
-[Desktop Entry]
-Name=弈
-Comment=Chess & Board Games
-Exec=chess_app
-Icon=chess_app
-Type=Application
-Categories=Game;BoardGame;
-Terminal=false
-DESKTOP
+          printf '%s\n' '[Desktop Entry]' 'Name=弈' 'Comment=Chess Board Games' \
+            'Exec=chess_app' 'Icon=chess_app' 'Type=Application' \
+            'Categories=Game;BoardGame;' 'Terminal=false' \
+            > "$PKG/usr/share/applications/chess_app.desktop"
           # control
-          cat > "$PKG/DEBIAN/control" << CONTROL
-Package: chess-app
-Version: $VNUM
-Section: games
-Priority: optional
-Architecture: amd64
-Depends: libgtk-3-0 (>= 3.24)
-Maintainer: JasonLeoZhou <jleo0001@github.com>
-Description: 弈 — Chess & Board Games
- All-in-one board game collection with 10 classic games,
- built-in AI opponents, and day/night themes.
-CONTROL
-          # wrapper script for LD_LIBRARY_PATH
-          cat > "$PKG/usr/bin/chess_app" << 'WRAPPER'
-#!/bin/bash
-HERE="$(dirname "$(readlink -f "${0}")")"
-export LD_LIBRARY_PATH="/usr/lib/chess_app:$LD_LIBRARY_PATH"
-exec "/usr/lib/chess_app/chess_app" "$@"
-WRAPPER
-          chmod +x "$PKG/usr/bin/chess_app"
-          mv "$PKG/usr/bin/chess_app" "$PKG/usr/lib/chess_app/chess_app"
-          # 重新生成 wrapper
-          cat > "$PKG/usr/bin/chess_app" << 'WRAPPER'
-#!/bin/bash
-export LD_LIBRARY_PATH="/usr/lib/chess_app:$LD_LIBRARY_PATH"
-exec "/usr/lib/chess_app/chess_app" "$@"
-WRAPPER
+          printf '%s\n' 'Package: chess-app' "Version: $VNUM" \
+            'Section: games' 'Priority: optional' 'Architecture: amd64' \
+            'Depends: libgtk-3-0 (>= 3.24)' \
+            'Maintainer: JasonLeoZhou <jleo0001@github.com>' \
+            'Description: Chess Board Games' \
+            'All-in-one board game collection with 10 classic games,' \
+            'built-in AI opponents, and day/night themes.' \
+            > "$PKG/DEBIAN/control"
+          # wrapper script
+          mkdir -p "$PKG/usr/lib/chess_app"
+          cp "$BUNDLE/chess_app" "$PKG/usr/lib/chess_app/"
+          printf '%s\n' '#!/bin/bash' \
+            'export LD_LIBRARY_PATH="/usr/lib/chess_app:$LD_LIBRARY_PATH"' \
+            'exec "/usr/lib/chess_app/chess_app" "$@"' \
+            > "$PKG/usr/bin/chess_app"
           chmod +x "$PKG/usr/bin/chess_app"
           dpkg-deb --build "$PKG"
 
