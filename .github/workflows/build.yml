@@ -180,7 +180,7 @@ jobs:
           retention-days: 30
 
   ##############################################################################
-  #  Ubuntu Matrix  ── Web + Linux （共用一个 ubuntu runner，节省排队）
+  #  Ubuntu Matrix  ── Web + Linux
   ##############################################################################
   ubuntu-builds:
     name: ${{ matrix.target.name }}
@@ -193,12 +193,20 @@ jobs:
             build: flutter build web --release
             upload: web-pwa-${{ needs.version.outputs.tag }}
             path: build/web/
-          - name: 🐧 Linux (AppImage)
+            pkg: ''
+          - name: 🐧 Linux (x64)
             build: |
               sudo apt-get update -qq && sudo apt-get install -y -qq cmake ninja-build libgtk-3-dev
               flutter build linux --release
             upload: linux-x64-${{ needs.version.outputs.tag }}
-            path: build/linux/x64/release/bundle/
+            path: dist/Chess-Flutter-${{ needs.version.outputs.tag }}-linux-x64.tar.gz
+            pkg: |
+              # Strip 剥离调试符号
+              strip build/linux/x64/release/bundle/chess_app 2>/dev/null || true
+              # tar.gz 打包（比 ZIP 更小）
+              mkdir -p dist
+              tar czf dist/Chess-Flutter-${{ needs.version.outputs.tag }}-linux-x64.tar.gz \
+                -C build/linux/x64/release/bundle/ .
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -222,6 +230,10 @@ jobs:
 
       - name: Build
         run: ${{ matrix.target.build }}
+
+      - name: Package
+        if: ${{ matrix.target.pkg != '' }}
+        run: ${{ matrix.target.pkg }}
 
       - name: Upload artifact
         uses: actions/upload-artifact@v4
@@ -303,8 +315,14 @@ jobs:
               cd ios && pod install && cd ..
               flutter build ios --release --no-codesign
             upload: ios-arm64-${{ needs.version.outputs.tag }}
-            path: build/ios/iphoneos/
-            pkg: ''
+            path: dist/弈-${{ needs.version.outputs.tag }}-ios.zip
+            pkg: |
+              APP=build/ios/iphoneos/Runner.app
+              # Strip 剥离调试符号
+              strip -S "${APP}/Runner" 2>/dev/null || true
+              # 仅打包 .app，排除 .dSYM
+              mkdir -p dist
+              ditto -c -k --keepParent "$APP" "dist/弈-${{ needs.version.outputs.tag }}-ios.zip"
     runs-on: macos-latest
     steps:
       - uses: actions/checkout@v4
