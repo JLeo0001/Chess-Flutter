@@ -31,3 +31,7 @@ flutter:
   assets:
     - assets/app_icon_256.png
     - assets/app_icon_512.png
+
+dependency_overrides:
+  dartchess:
+    path: patches/dartchess
