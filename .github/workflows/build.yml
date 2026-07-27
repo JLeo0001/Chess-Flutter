@@ -306,14 +306,13 @@ jobs:
           - name: 🍎 macOS (x64)
             build: flutter build macos --release
             upload: macos-x64-${{ needs.version.outputs.tag }}
-            path: dist/弈-${{ needs.version.outputs.tag }}.zip
+            path: dist/弈-${{ needs.version.outputs.tag }}-macos.zip
             pkg: |
-              APP=build/macos/Build/Products/Release/Runner.app
-              # Strip debug symbols（从几百 MB 降到 ~30 MB）
-              strip -S "${APP}/Contents/MacOS/Runner" 2>/dev/null || true
-              # 仅打包 .app，排除 .dSYM
+              APP=build/macos/Build/Products/Release/chess_app.app
+              # Strip debug symbols
+              strip -S "${APP}/Contents/MacOS/chess_app" 2>/dev/null || true
               mkdir -p dist
-              ditto -c -k --keepParent "$APP" "dist/弈-${{ needs.version.outputs.tag }}.zip"
+              ditto -c -k --keepParent "$APP" "dist/弈-${{ needs.version.outputs.tag }}-macos.zip"
           - name: 📱 iOS (arm64)
             build: |
               cd ios && pod install && cd ..
