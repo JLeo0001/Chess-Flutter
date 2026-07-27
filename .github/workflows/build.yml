@@ -272,20 +272,23 @@ jobs:
 
       - name: Build Windows (release)
         run: |
-          $cmakeReal = (Get-Command cmake).Source
-          $wrapperDir = "$env:TEMP\cmake_wrapper"
-          New-Item -ItemType Directory -Force -Path $wrapperDir | Out-Null
-          # 逐行写入 cmake.bat，避免 PowerShell here-string 与 YAML 冲突
-          "@echo off" | Out-File -FilePath "$wrapperDir\cmake.bat" -Encoding ASCII
-          'set "config=windows\flutter\ephemeral\generated_config.cmake"' | Add-Content "$wrapperDir\cmake.bat"
-          'if exist "%config%" (' | Add-Content "$wrapperDir\cmake.bat"
-          '    powershell -NoProfile -Command "(Get-Content ''%config%'') -replace ''Visual Studio 16 2019'',''Visual Studio 17 2022'' | Set-Content ''%config%''"' | Add-Content "$wrapperDir\cmake.bat"
-          ')' | Add-Content "$wrapperDir\cmake.bat"
-          "`"$cmakeReal`" %*" | Add-Content "$wrapperDir\cmake.bat"
-          # 把 .BAT 优先级提到 .EXE 前面
-          $env:PATHEXT = ".BAT;$env:PATHEXT"
-          $env:PATH = "$wrapperDir;$env:PATH"
-          flutter build windows --release
+          # Flutter 3.27 不识别 VS 2025，硬编码 VS 2019 作为 cmake generator。
+          # 解法：在 Flutter 生成配置后，手动调用 cmake 覆盖 generator。
+          
+          # 第一步：触发 Flutter 生成配置（会失败，但 generated_config 和 build/windows 就绪）
+          flutter build windows --release 2>&1 | Out-Null
+          
+          # 第二步：修正 config 中的 generator
+          $config = "windows\flutter\ephemeral\generated_config.cmake"
+          (Get-Content $config) -replace 'Visual Studio 16 2019','Visual Studio 17 2022' | Set-Content $config
+          
+          # 第三步：手动 cmake（将缓存中 generator 也覆盖掉）
+          cmake -S windows -B build/windows `
+            -C windows/flutter/ephemeral/generated_config.cmake `
+            -G "Visual Studio 17 2022" -A x64
+          
+          # 第四步：手动 build
+          cmake --build build/windows --config Release
 
       - name: Package with ZIP
         run: |
