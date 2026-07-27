@@ -36,7 +36,7 @@ jobs:
       tag: ${{ steps.v.outputs.tag }}
       number: ${{ steps.v.outputs.number }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
       - id: v
         run: |
           # 优先用 workflow_dispatch 传入的版本
@@ -62,23 +62,23 @@ jobs:
     needs: version
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
 
       - name: Setup Flutter
-        uses: subosito/flutter-action@v2
+        uses: subosito/flutter-action@v3
         with:
           flutter-version: ${{ env.FLUTTER_VERSION }}
           channel: stable
           cache: true
 
       - name: Setup Java
-        uses: actions/setup-java@v4
+        uses: actions/setup-java@v5
         with:
           distribution: zulu
           java-version: 21
 
       - name: Cache Gradle
-        uses: actions/cache@v4
+        uses: actions/cache@v5
         with:
           path: |
             ~/.gradle/caches
@@ -87,7 +87,7 @@ jobs:
           restore-keys: gradle-${{ runner.os }}-
 
       - name: Cache pub
-        uses: actions/cache@v4
+        uses: actions/cache@v5
         with:
           path: ~/.pub-cache
           key: pub-${{ runner.os }}-${{ hashFiles('pubspec.yaml') }}
@@ -95,7 +95,7 @@ jobs:
 
       - name: Cache NDK
         id: cache-ndk
-        uses: actions/cache@v4
+        uses: actions/cache@v5
         with:
           path: /usr/local/lib/android/sdk/ndk/27.0.12077973
           key: ndk-27.0.12077973-${{ runner.os }}
@@ -148,7 +148,7 @@ jobs:
           ls -lh output/
 
       - name: Upload universal APK
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v5
         with:
           name: android-universal-${{ needs.version.outputs.tag }}
           path: output/Chess-Flutter-${{ needs.version.outputs.tag }}-universal.apk
@@ -156,7 +156,7 @@ jobs:
           retention-days: 30
 
       - name: Upload arm64 APK
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v5
         with:
           name: android-arm64-${{ needs.version.outputs.tag }}
           path: output/Chess-Flutter-${{ needs.version.outputs.tag }}-arm64.apk
@@ -164,7 +164,7 @@ jobs:
           retention-days: 30
 
       - name: Upload arm32 APK
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v5
         with:
           name: android-arm32-${{ needs.version.outputs.tag }}
           path: output/Chess-Flutter-${{ needs.version.outputs.tag }}-arm32.apk
@@ -172,7 +172,7 @@ jobs:
           retention-days: 30
 
       - name: Upload x86_64 APK
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v5
         with:
           name: android-x86_64-${{ needs.version.outputs.tag }}
           path: output/Chess-Flutter-${{ needs.version.outputs.tag }}-x86_64.apk
@@ -187,17 +187,17 @@ jobs:
     needs: version
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
 
       - name: Setup Flutter
-        uses: subosito/flutter-action@v2
+        uses: subosito/flutter-action@v3
         with:
           flutter-version: ${{ env.FLUTTER_VERSION }}
           channel: stable
           cache: true
 
       - name: Cache pub
-        uses: actions/cache@v4
+        uses: actions/cache@v5
         with:
           path: ~/.pub-cache
           key: pub-${{ runner.os }}-${{ hashFiles('pubspec.yaml') }}
@@ -214,7 +214,7 @@ jobs:
           cd build/web && zip -qr "../../dist/Chess-Flutter-${{ needs.version.outputs.tag }}-web.zip" .
 
       - name: Upload artifact
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v5
         with:
           name: web-pwa-${{ needs.version.outputs.tag }}
           path: dist/Chess-Flutter-${{ needs.version.outputs.tag }}-web.zip
@@ -229,17 +229,17 @@ jobs:
     needs: version
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
 
       - name: Setup Flutter
-        uses: subosito/flutter-action@v2
+        uses: subosito/flutter-action@v3
         with:
           flutter-version: ${{ env.FLUTTER_VERSION }}
           channel: stable
           cache: true
 
       - name: Cache pub
-        uses: actions/cache@v4
+        uses: actions/cache@v5
         with:
           path: ~/.pub-cache
           key: pub-${{ runner.os }}-${{ hashFiles('pubspec.yaml') }}
@@ -326,7 +326,7 @@ jobs:
             -C build/linux/x64/release/bundle .
 
       - name: Upload AppImage
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v5
         with:
           name: linux-AppImage-${{ needs.version.outputs.tag }}
           path: dist/Chess-Flutter-${{ needs.version.outputs.tag }}-x86_64.AppImage
@@ -334,7 +334,7 @@ jobs:
           retention-days: 30
 
       - name: Upload .deb
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v5
         with:
           name: linux-deb-${{ needs.version.outputs.tag }}
           path: dist/deb/*.deb
@@ -342,7 +342,7 @@ jobs:
           retention-days: 30
 
       - name: Upload .tar.gz
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v5
         with:
           name: linux-tar.gz-${{ needs.version.outputs.tag }}
           path: dist/Chess-Flutter-${{ needs.version.outputs.tag }}-linux-x64.tar.gz
@@ -357,17 +357,17 @@ jobs:
     needs: version
     runs-on: windows-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
 
       - name: Setup Flutter
-        uses: subosito/flutter-action@v2
+        uses: subosito/flutter-action@v3
         with:
           flutter-version: ${{ env.FLUTTER_VERSION }}
           channel: stable
           cache: true
 
       - name: Cache pub
-        uses: actions/cache@v4
+        uses: actions/cache@v5
         with:
           path: ~/.pub-cache
           key: pub-${{ runner.os }}-${{ hashFiles('pubspec.yaml') }}
@@ -402,7 +402,7 @@ jobs:
         shell: pwsh
 
       - name: Upload artifact
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v5
         with:
           name: windows-x64-${{ needs.version.outputs.tag }}
           path: Chess-Flutter-${{ needs.version.outputs.tag }}-windows-x64.zip
@@ -448,17 +448,17 @@ jobs:
               rm -rf Payload
     runs-on: macos-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
 
       - name: Setup Flutter
-        uses: subosito/flutter-action@v2
+        uses: subosito/flutter-action@v3
         with:
           flutter-version: ${{ env.FLUTTER_VERSION }}
           channel: stable
           cache: true
 
       - name: Cache pub
-        uses: actions/cache@v4
+        uses: actions/cache@v5
         with:
           path: ~/.pub-cache
           key: pub-${{ runner.os }}-${{ hashFiles('pubspec.yaml') }}
@@ -473,7 +473,7 @@ jobs:
           ${{ matrix.target.pkg }}
 
       - name: Upload artifact
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v5
         with:
           name: ${{ matrix.target.upload }}
           path: ${{ matrix.target.path }}
