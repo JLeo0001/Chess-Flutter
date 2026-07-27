@@ -290,10 +290,14 @@ jobs:
           - name: 🍎 macOS (x64)
             build: flutter build macos --release
             upload: macos-x64-${{ needs.version.outputs.tag }}
-            path: build/macos/Build/Products/Release/
+            path: dist/弈-${{ needs.version.outputs.tag }}.zip
             pkg: |
+              APP=build/macos/Build/Products/Release/Runner.app
+              # Strip debug symbols（从几百 MB 降到 ~30 MB）
+              strip -S "${APP}/Contents/MacOS/Runner" 2>/dev/null || true
+              # 仅打包 .app，排除 .dSYM
               mkdir -p dist
-              ditto build/macos/Build/Products/Release/Runner.app dist/弈.app
+              ditto -c -k --keepParent "$APP" "dist/弈-${{ needs.version.outputs.tag }}.zip"
           - name: 📱 iOS (arm64)
             build: |
               cd ios && pod install && cd ..
@@ -322,8 +326,10 @@ jobs:
       - name: Install Flutter dependencies
         run: flutter pub get
 
-      - name: Build
-        run: ${{ matrix.target.build }}
+      - name: Build & Package
+        run: |
+          ${{ matrix.target.build }}
+          ${{ matrix.target.pkg }}
 
       - name: Upload artifact
         uses: actions/upload-artifact@v4
