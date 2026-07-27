@@ -1,86 +1,84 @@
 import 'dart:math' as math;
 import 'package:flutter/material.dart';
 
-/// 日夜切换波纹动画 — 不使用截图，使用装饰性波纹扩散效果
-/// 点击按钮后主题立即切换，同时从按钮位置播放波纹动画
-class ThemeRipple extends StatefulWidget {
+/// 同心圆展开日夜切换动画
+///
+/// 工作原理：
+/// 1. 点击按钮时记录按钮位置和当前主题背景色
+/// 2. 立即切换主题（下层重建）
+/// 3. 用旧背景色覆盖全屏，圆形孔洞从按钮位置向外扩张
+/// 4. 孔洞中露出下层的新主题
+class ThemeReveal extends StatefulWidget {
   final Widget child;
   final VoidCallback onToggleTheme;
 
-  /// 全局访问入口
-  static final GlobalKey<ThemeRippleState> globalKey =
-      GlobalKey<ThemeRippleState>();
+  static final GlobalKey<ThemeRevealState> globalKey = GlobalKey();
 
-  const ThemeRipple({
+  const ThemeReveal({
     super.key,
     required this.child,
     required this.onToggleTheme,
   });
 
   @override
-  State<ThemeRipple> createState() => ThemeRippleState();
+  State<ThemeReveal> createState() => ThemeRevealState();
 }
 
-class ThemeRippleState extends State<ThemeRipple>
+class ThemeRevealState extends State<ThemeReveal>
     with SingleTickerProviderStateMixin {
-  AnimationController? _controller;
-  Offset _center = Offset.zero;
-  bool _showRipple = false;
+  Offset? _center;
+  late AnimationController _ctrl;
+  late Animation<double> _anim;
+  Color _oldBg = Colors.transparent;
+  double _maxRadius = 0;
 
-  /// 触发主题切换 + 波纹动画
-  void trigger(Offset centerPosition) {
-    if (_showRipple) return;
+  void trigger(Offset center) {
+    // 记录按钮位置和切换前的背景色
+    final ctx = context;
+    _oldBg = Theme.of(ctx).colorScheme.surface;
+    _center = center;
 
-    _center = centerPosition;
+    final size = MediaQuery.of(ctx).size;
+    final dx = math.max(center.dx, size.width - center.dx);
+    final dy = math.max(center.dy, size.height - center.dy);
+    _maxRadius = math.sqrt(dx * dx + dy * dy) + 20; // 稍微多出一点防白边
 
-    // 立即切换主题
+    // 先切主题，再播动画
     widget.onToggleTheme();
 
-    // 启动波纹动画
-    _controller?.dispose();
-    _controller = AnimationController(
+    _ctrl = AnimationController(
       vsync: this,
-      duration: const Duration(milliseconds: 800),
+      duration: const Duration(milliseconds: 600),
     );
-
-    _controller!.addListener(() => setState(() {}));
-    _controller!.addStatusListener((status) {
-      if (status == AnimationStatus.completed) {
-        setState(() => _showRipple = false);
+    _anim = CurvedAnimation(parent: _ctrl, curve: Curves.fastOutSlowIn);
+    _ctrl.addListener(() => setState(() {}));
+    _ctrl.addStatusListener((s) {
+      if (s == AnimationStatus.completed) {
+        setState(() => _center = null);
       }
     });
-
-    setState(() {
-      _showRipple = true;
-      _controller!.forward(from: 0);
-    });
+    _ctrl.forward();
   }
 
   @override
   void dispose() {
-    _controller?.dispose();
+    _ctrl.dispose();
     super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
-    final night = Theme.of(context).brightness == Brightness.dark;
-    // 波纹颜色：使用相反主题的高亮色 + 逐渐透明
-    final rippleColor = night
-        ? const Color(0xFFE8DEF8) // 日间高亮色
-        : const Color(0xFF4F378B); // 夜间高亮色
-
     return Stack(
       children: [
         widget.child,
-        if (_showRipple && _controller != null)
+        if (_center != null && _anim.value < 1.0)
           Positioned.fill(
             child: IgnorePointer(
               child: CustomPaint(
-                painter: _RipplePainter(
-                  center: _center,
-                  progress: _controller!.value,
-                  color: rippleColor,
+                painter: _CircleRevealPainter(
+                  center: _center!,
+                  radius: _maxRadius * _anim.value,
+                  color: _oldBg,
                 ),
               ),
             ),
@@ -90,66 +88,29 @@ class ThemeRippleState extends State<ThemeRipple>
   }
 }
 
-class _RipplePainter extends CustomPainter {
+class _CircleRevealPainter extends CustomPainter {
   final Offset center;
-  final double progress; // 0..1
+  final double radius;
   final Color color;
 
-  _RipplePainter({
+  _CircleRevealPainter({
     required this.center,
-    required this.progress,
+    required this.radius,
     required this.color,
   });
 
   @override
   void paint(Canvas canvas, Size size) {
-    // 计算所需最大半径（从中心到最远角落）
-    final maxRadius = math.sqrt(
-      math.max(
-        center.dx * center.dx + center.dy * center.dy,
-        math.max(
-          (size.width - center.dx) * (size.width - center.dx) +
-              (size.height - center.dy) * (size.height - center.dy),
-          math.max(
-            center.dx * center.dx +
-                (size.height - center.dy) * (size.height - center.dy),
-            (size.width - center.dx) * (size.width - center.dx) +
-                center.dy * center.dy,
-          ),
-        ),
-      ),
-    );
+    // 全屏矩形 - 圆形孔洞 = 露出新主题
+    final path = Path()
+      ..addRect(Rect.fromLTWH(0, 0, size.width, size.height))
+      ..addOval(Rect.fromCircle(center: center, radius: radius))
+      ..fillType = PathFillType.evenOdd;
 
-    // 动画：半径从小到大，透明度从高到低
-    final radius = maxRadius * _easeOutCubic(progress);
-    final alpha = ((1.0 - progress) * 120).round().clamp(0, 120);
-
-    // 绘制主圆
-    canvas.drawCircle(
-      center,
-      radius,
-      Paint()
-        ..color = color.withAlpha(alpha)
-        ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 30),
-    );
-
-    // 内圈更亮
-    if (progress < 0.7) {
-      final innerRadius = radius * 0.6;
-      final innerAlpha = ((1.0 - progress / 0.7) * 80).round().clamp(0, 80);
-      canvas.drawCircle(
-        center,
-        innerRadius,
-        Paint()
-          ..color = Colors.white.withAlpha(innerAlpha)
-          ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 20),
-      );
-    }
+    canvas.drawPath(path, Paint()..color = color);
   }
 
-  double _easeOutCubic(double t) => 1.0 - math.pow(1.0 - t, 3).toDouble();
-
   @override
-  bool shouldRepaint(covariant _RipplePainter old) =>
-      old.progress != progress || old.center != center;
+  bool shouldRepaint(covariant _CircleRevealPainter old) =>
+      old.radius != radius || old.center != center || old.color != color;
 }
