@@ -232,7 +232,7 @@ jobs:
         run: ${{ matrix.target.build }}
 
       - name: Package
-        if: ${{ matrix.target.pkg != '' }}
+        if: "matrix.target.pkg != ''"
         run: ${{ matrix.target.pkg }}
 
       - name: Upload artifact
@@ -272,20 +272,17 @@ jobs:
 
       - name: Build Windows (release)
         run: |
-          # windows-latest 只有 VS 2025，Flutter 3.27 不识别，硬编码 VS 2019。
-          # 用 cmake 包装器：在真实 cmake 运行前修正 generated_config.cmake。
           $cmakeReal = (Get-Command cmake).Source
           $wrapperDir = "$env:TEMP\cmake_wrapper"
           New-Item -ItemType Directory -Force -Path $wrapperDir | Out-Null
-          Set-Content -Path "$wrapperDir\cmake.bat" -Value @"
-          @echo off
-          set "config=windows\flutter\ephemeral\generated_config.cmake"
-          if exist "%config%" (
-              powershell -NoProfile -Command "(Get-Content '%config%') -replace 'Visual Studio 16 2019','Visual Studio 17 2022' | Set-Content '%config%'"
-          )
-          "$cmakeReal" %*
-"@
-          # 把 .BAT 优先级提到 .EXE 前面，让 cmake.bat 先被找到
+          # 逐行写入 cmake.bat，避免 PowerShell here-string 与 YAML 冲突
+          "@echo off" | Out-File -FilePath "$wrapperDir\cmake.bat" -Encoding ASCII
+          'set "config=windows\flutter\ephemeral\generated_config.cmake"' | Add-Content "$wrapperDir\cmake.bat"
+          'if exist "%config%" (' | Add-Content "$wrapperDir\cmake.bat"
+          '    powershell -NoProfile -Command "(Get-Content ''%config%'') -replace ''Visual Studio 16 2019'',''Visual Studio 17 2022'' | Set-Content ''%config%''"' | Add-Content "$wrapperDir\cmake.bat"
+          ')' | Add-Content "$wrapperDir\cmake.bat"
+          "`"$cmakeReal`" %*" | Add-Content "$wrapperDir\cmake.bat"
+          # 把 .BAT 优先级提到 .EXE 前面
           $env:PATHEXT = ".BAT;$env:PATHEXT"
           $env:PATH = "$wrapperDir;$env:PATH"
           flutter build windows --release
