@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
+import '../third_party/circular_theme_reveal/circular_theme_reveal.dart';
 import '../models/theme_provider.dart';
-import '../widgets/theme_reveal.dart';
 
 class MenuPage extends StatefulWidget {
   const MenuPage({super.key});
@@ -61,7 +61,12 @@ class _MenuPageState extends State<MenuPage>
         localPos.dx + renderBox.size.width / 2,
         localPos.dy + renderBox.size.height / 2,
       );
-      ThemeReveal.globalKey.currentState?.trigger(center);
+      final night = Theme.of(context).brightness == Brightness.dark;
+      CircularThemeRevealOverlay.of(context)?.startTransition(
+        center: center,
+        reverse: night,
+        onThemeChange: () => context.read<ThemeProvider>().toggleManual(),
+      );
     } else {
       context.read<ThemeProvider>().toggleManual();
     }
