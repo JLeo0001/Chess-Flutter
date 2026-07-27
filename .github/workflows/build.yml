@@ -211,6 +211,7 @@ jobs:
 
       - name: Package ZIP
         run: |
+          mkdir -p dist
           cd build/web && zip -qr "../../dist/Chess-Flutter-${{ needs.version.outputs.tag }}-web.zip" .
 
       - name: Upload artifact
