@@ -94,6 +94,7 @@ class _MenuPageState extends State<MenuPage>
                     ),
                     onPressed: _onThemeToggle,
                   ),
+                  const Spacer(),
                   IconButton(
                     icon: Icon(Icons.settings_outlined, color: cs.primary),
                     onPressed: () => Navigator.pushNamed(context, '/settings'),
