@@ -328,14 +328,13 @@ jobs:
               cd ios && pod install && cd ..
               flutter build ios --release --no-codesign
             upload: ios-arm64-${{ needs.version.outputs.tag }}
-            path: dist/弈-${{ needs.version.outputs.tag }}-ios.zip
+            path: dist/弈-${{ needs.version.outputs.tag }}-ios.ipa
             pkg: |
-              APP=build/ios/iphoneos/Runner.app
-              # Strip 剥离调试符号
-              strip -S "${APP}/Runner" 2>/dev/null || true
-              # 仅打包 .app，排除 .dSYM
-              mkdir -p dist
-              ditto -c -k --keepParent "$APP" "dist/弈-${{ needs.version.outputs.tag }}-ios.zip"
+              # 无签名构建，产出 unsigned .ipa（可用 sideloadly / AltStore 安装）
+              mkdir -p dist/Payload
+              cp -r build/ios/iphoneos/Runner.app dist/Payload/
+              cd dist && zip -qr "弈-${{ needs.version.outputs.tag }}-ios.ipa" Payload/
+              rm -rf Payload
     runs-on: macos-latest
     steps:
       - uses: actions/checkout@v4
