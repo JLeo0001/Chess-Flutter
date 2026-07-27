@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import '../themes/app_theme.dart';
 
 /// 教程页面 — 超详细新手教程
 class TutorialPage extends StatelessWidget {
@@ -8,7 +7,9 @@ class TutorialPage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
     final night = Theme.of(context).brightness == Brightness.dark;
+    
     String title;
     switch (gameType) {
       case 'chinese_chess':       title = '中国象棋 · 从零开始'; break;
@@ -35,21 +36,21 @@ class TutorialPage extends StatelessWidget {
                   IconButton(
                     icon: Icon(Icons.arrow_back),
                     onPressed: () => Navigator.pop(context),
-                    color: AppThemeColors.primary(night),
+                    color: cs.primary,
                   ),
                   const SizedBox(width: 8),
                   Flexible(
                     child: Text(title,
-                        style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: AppThemeColors.title(night))),
+                        style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: cs.onSurface)),
                   ),
                 ],
               ),
             ),
-            Divider(color: AppThemeColors.divider(night)),
+            Divider(color: cs.outlineVariant),
             Expanded(
               child: SingleChildScrollView(
                 padding: const EdgeInsets.all(16),
-                child: _buildContent(context),
+                child: _buildContent(night, cs),
               ),
             ),
           ],
@@ -58,39 +59,39 @@ class TutorialPage extends StatelessWidget {
     );
   }
 
-  Widget _buildContent(BuildContext context) {
-    final night = Theme.of(context).brightness == Brightness.dark;
+  Widget _buildContent(bool night, ColorScheme cs) {
+    
     switch (gameType) {
-      case 'chinese_chess': return _chineseChess(night);
-      case 'international_chess': return _internationalChess(night);
-      case 'tictactoe': return _tictactoe(night);
-      case 'go': return _go(night);
-      case 'poker_draw': return _pokerDraw(night);
-      case 'poker_holdem': return _pokerHoldem(night);
-      case 'uno': return _uno(night);
-      case 'spider': return _spider(night);
-      case 'doudizhu': return _doudizhu(night);
-      case 'poker': return _pokerBoth(night);
-      default: return _gobang(night);
+      case 'chinese_chess': return _chineseChess(night, cs);
+      case 'international_chess': return _internationalChess(night, cs);
+      case 'tictactoe': return _tictactoe(night, cs);
+      case 'go': return _go(night, cs);
+      case 'poker_draw': return _pokerDraw(night, cs);
+      case 'poker_holdem': return _pokerHoldem(night, cs);
+      case 'uno': return _uno(night, cs);
+      case 'spider': return _spider(night, cs);
+      case 'doudizhu': return _doudizhu(night, cs);
+      case 'poker': return _pokerBoth(night, cs);
+      default: return _gobang(night, cs);
     }
   }
 
   // ═══════════════════════════════════════════════════════════════
   //  五子棋
   // ═══════════════════════════════════════════════════════════════
-  Widget _gobang(bool night) {
+  Widget _gobang(bool night, ColorScheme cs) {
     return Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
       _section('欢迎来到五子棋世界！', [
         '五子棋是全世界最简单的棋类游戏之一，规则只需要一句话就能说明白。',
         '但别被它的简单欺骗了——五子棋里面藏着非常深的策略和技巧。',
         '你完全不需要任何基础，花半分钟看完规则就能开始玩。',
-      ], night),
+      ], night, cs),
 
       _section('第一步：认识棋盘', [
         '五子棋的棋盘是 15×15 的，一共 225 个交叉点（就是横线和竖线相交的地方）。',
         '你往棋盘上看，有横线 15 条、竖线 15 条，它们交叉形成一个个小格子，但你下棋的时候，棋子是放在交叉点上，不是放在格子里。',
         '棋盘中间最中心的那个点叫「天元」，周围还有四个小点叫「星位」，它们主要是帮你定位的，新手不用太在意。',
-      ], night),
+      ], night, cs),
 
       _section('第二步：游戏规则（核心！）', [
         '① 五子棋是两个人玩的游戏，一个人拿黑棋，一个人拿白棋。',
@@ -99,7 +100,7 @@ class TutorialPage extends StatelessWidget {
         '④ 谁的棋子在横线、竖线或者斜线上先连成 5 个（必须是连续的 5 个），谁就赢了！',
         '',
         '简单吗？就是「谁先连成 5 个谁赢」。',
-      ], night),
+      ], night, cs),
 
       _section('第三步：进阶知识——活三、冲四是什么？', [
         '「活三」：你有 3 个棋子连成一条线，两端都没被堵住。这时候对手必须马上堵你，否则下一步你就变成活四了。',
@@ -107,7 +108,7 @@ class TutorialPage extends StatelessWidget {
         '「活四」：你有 4 个棋子连成一条线，两端都没被堵住——这时候对手已经拦不住你了！你下一步就能变成 5 个。',
         '',
         '⭐ 核心技巧：高手下棋时，会尽量制造「双活三」或「冲四+活三」，也就是同时制造两个威胁，让对手堵得了一个堵不了第二个。',
-      ], night),
+      ], night, cs),
 
       _section('第四步：新手常犯的错误', [
         '❌ 只知道堵对手，不会自己进攻。—— 只会防守的人永远赢不了。',
@@ -115,32 +116,32 @@ class TutorialPage extends StatelessWidget {
         '❌ 不注意斜线。—— 很多人只盯着横线和竖线，结果对手在斜线上偷偷连成 5 个。',
         '',
         '✅ 正确的思路是：你走一步棋，既要让自己有发展，又要堵住对手的威胁。两边都要看。',
-      ], night),
+      ], night, cs),
 
       _section('第五步：实用小技巧', [
         '① 尽量抢占棋盘中央的位置（天元附近），中央可以往四面八方发展。',
         '② 黑棋先手有优势，如果你是黑棋，主动进攻；如果你是白棋，先防守再找机会反击。',
         '③ 留意对手的「活三」——只要对手走出活三，你必须立刻去堵！',
         '④ 开局时可以参考这些走法：黑棋第一步走天元，白棋走旁边，黑棋再走一个形成「活二」。',
-      ], night),
+      ], night, cs),
     ]);
   }
 
   // ═══════════════════════════════════════════════════════════════
   //  井字棋
   // ═══════════════════════════════════════════════════════════════
-  Widget _tictactoe(bool night) {
+  Widget _tictactoe(bool night, ColorScheme cs) {
     return Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
       _section('欢迎！最简单的棋类游戏', [
         '井字棋（也叫圈圈叉叉）可能是全世界最简单的棋类游戏了。',
         '你小时候一定在纸上画过——一个井字形的九宫格，两个人画叉和圈。',
         '游戏虽然简单，但它其实是学习「博弈思维」的最佳入门练习。',
-      ], night),
+      ], night, cs),
 
       _section('棋盘长什么样？', [
         '井字棋的棋盘就是 3×3 的九宫格。3 行 3 列，一共 9 个空位。',
         '你手机屏幕上看到的就是这样一个 3×3 的格子。',
-      ], night),
+      ], night, cs),
 
       _section('怎么玩？（规则）', [
         '① 游戏是两个人玩的，一个人用 ×（叉叉），一个人用 ○（圈圈）。',
@@ -149,7 +150,7 @@ class TutorialPage extends StatelessWidget {
         '④ 如果 9 个格子都填满了，没有一个人连成 3 个，那就是平局。',
         '',
         '就这么简单！任何一局游戏最长不超过 9 步。',
-      ], night),
+      ], night, cs),
 
       _section('基本策略（包教包会）', [
         '先手（×）的最佳第一步：走中间！',
@@ -164,33 +165,33 @@ class TutorialPage extends StatelessWidget {
         '- 对手走角落，你走中间。',
         '',
         '⭐ 高级技巧：如果双方都下对了，井字棋永远是平局。所以别灰心！',
-      ], night),
+      ], night, cs),
 
       _section('为什么井字棋值得玩？', [
         '虽然井字棋很简单，但它教会你一个很重要的道理：',
         '「下棋不光是想着自己怎么赢，还要想着对手会怎么阻止你。」',
         '这个思维在任何棋类游戏中都通用。',
-      ], night),
+      ], night, cs),
     ]);
   }
 
   // ═══════════════════════════════════════════════════════════════
   //  中国象棋
   // ═══════════════════════════════════════════════════════════════
-  Widget _chineseChess(bool night) {
+  Widget _chineseChess(bool night, ColorScheme cs) {
     return Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
       _section('欢迎来学中国象棋！', [
         '中国象棋是咱们老祖宗留下来的智慧游戏，已经有两千多年的历史了。',
         '你肯定在公园里见过老大爷们围在一起下棋——听起来很复杂，其实入门真不难。',
         '只要你走完这 10 分钟教程，就能看懂棋盘上在干什么，并且能开始下棋了。',
-      ], night),
+      ], night, cs),
 
       _section('第一步：认识棋盘', [
         '中国象棋的棋盘是 9 条竖线 × 10 条横线，一共 90 个交叉点。',
         '棋盘中间有一条很宽的空隙，写着「楚河 汉界」——这是把棋盘分成两半的分界线。',
         '红方在下方（你的这一侧），黑方在上方（对手那一侧）。',
         '棋盘上靠近你底部的那个「米」字形区域叫做「九宫」，是帅/将的活动范围。',
-      ], night),
+      ], night, cs),
 
       _section('第二步：认识棋子（一共 32 个）', [
         '红方和黑方各有 16 个棋子，种类是一一对应的：',
@@ -216,7 +217,7 @@ class TutorialPage extends StatelessWidget {
         '',
         '⛑️ 兵 / 卒（每方 5 个）',
         '  最弱但也最英勇的棋子，只能前进不能后退。',
-      ], night),
+      ], night, cs),
 
       _section('第三步：每个棋子到底怎么走？（详细图解）', [
         '',
@@ -247,13 +248,13 @@ class TutorialPage extends StatelessWidget {
         '【兵/卒】',
         '在过河之前，只能往前走，一次走一格，不能后退、不能左右走。',
         '过了河之后，可以往前走，也可以往左或往右走，每次一格，但仍然不能后退。',
-      ], night),
+      ], night, cs),
 
       _section('第四步：怎么才算赢？', [
         '① 将死：把你的棋子走到可以吃掉对方帅/将的位置，并且对方无法逃脱。——你赢了！',
         '② 困毙：轮到对方走棋时，他发现无论走哪个棋子都会被吃掉。——你赢了！',
         '③ 和棋：双方都无法将死对方（比如双方都只剩一个帅/将）。——平局。',
-      ], night),
+      ], night, cs),
 
       _section('第五步：给新手的几个小建议', [
         '🥇 开局先出动大子：车、马、炮是你最强的进攻棋子，开局不要频繁走兵和士象。',
@@ -263,26 +264,26 @@ class TutorialPage extends StatelessWidget {
         '🥇 兵过河才厉害：兵没过河作用不大，一旦过了河，可以左右走，威力大增。',
         '',
         '💡 记住口诀：马走日，象走田，车走直路炮翻山，士走斜线护将边，小卒一去不回还。',
-      ], night),
+      ], night, cs),
     ]);
   }
 
   // ═══════════════════════════════════════════════════════════════
   //  国际象棋
   // ═══════════════════════════════════════════════════════════════
-  Widget _internationalChess(bool night) {
+  Widget _internationalChess(bool night, ColorScheme cs) {
     return Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
       _section('欢迎来学国际象棋！', [
         '国际象棋是全世界最流行的棋类游戏，连电脑都下不过的高手到处都是。',
         '不过别怕，入门真的不难。你只需要认识 6 种棋子的走法，就能开始下了。',
         '如果你已经会中国象棋，那学国际象棋会轻松一半。',
-      ], night),
+      ], night, cs),
 
       _section('第一步：认识棋盘', [
         '国际象棋的棋盘是 8×8 的方格，一共 64 个格子——一半白色一半黑色，交替排列。',
         '布置棋盘时千万注意：右下角的格子必须是白色的！',
         '白方的棋子放在第 1 行和第 2 行，黑方的棋子放在第 7 行和第 8 行。',
-      ], night),
+      ], night, cs),
 
       _section('第二步：认识棋子（每方 16 个）', [
         '👑 王（King）—— 1 个，最重要！丢了就输了。',
@@ -291,7 +292,7 @@ class TutorialPage extends StatelessWidget {
         '🐴 马（Knight）—— 2 个，跳着走。',
         '🎯 象（Bishop）—— 2 个，斜着走。',
         '🚶 兵（Pawn）—— 8 个，最普通但最关键。',
-      ], night),
+      ], night, cs),
 
       _section('第三步：每种棋子怎么走？', [
         '',
@@ -321,7 +322,7 @@ class TutorialPage extends StatelessWidget {
         '② 之后每次只能走一格。',
         '③ 吃子的时候是斜着吃的（走到斜前方一格），不是直着吃的。',
         '④ 兵走到对方的底线时，可以「升变」变成后、车、象、马中的任何一个（通常变成后，因为后最厉害）。',
-      ], night),
+      ], night, cs),
 
       _section('第四步：三种特殊规则（必须知道！）', [
         '',
@@ -342,7 +343,7 @@ class TutorialPage extends StatelessWidget {
         '🎯 规则三：兵的升变',
         '任意一个兵走到对方的底线（第 8 行）时，可以变成后、车、象、马中的任何一个。',
         '通常都是变成后，因为后最厉害。而且不能不变！',
-      ], night),
+      ], night, cs),
 
       _section('第五步：怎样算赢？怎样算和棋？', [
         '',
@@ -354,7 +355,7 @@ class TutorialPage extends StatelessWidget {
         '③ 同样的局面连续出现三次。',
         '④ 长将：一方连续不断地将军，另一方永远躲不开。',
         '⑤ 双方都没有足够的棋子将死对方。',
-      ], night),
+      ], night, cs),
 
       _section('第六步：给新手的起步建议', [
         '① 开局先出马和象，再出后和车。不要一开始就把后放出来，容易被攻击。',
@@ -362,27 +363,27 @@ class TutorialPage extends StatelessWidget {
         '③ 控制棋盘中心（e4、d4、e5、d5 这几个格子）。',
         '④ 不要随便丢棋子——每个棋子都有价值（兵=1，马=3，象=3，车=5，后=9）。',
         '⑤ 下棋前先看一眼：你走完这一步，对手能不能吃掉你的棋子？',
-      ], night),
+      ], night, cs),
     ]);
   }
 
   // ═══════════════════════════════════════════════════════════════
   //  围棋
   // ═══════════════════════════════════════════════════════════════
-  Widget _go(bool night) {
+  Widget _go(bool night, ColorScheme cs) {
     return Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
       _section('欢迎来学围棋！', [
         '围棋是世界上最古老的棋类游戏之一，有 4000 多年的历史。',
         '它的规则其实非常简单，但变化却无穷无尽——有人说它比宇宙中的原子数量还复杂。',
         '别被吓到！规则真的很简单，你 5 分钟就能学会。',
-      ], night),
+      ], night, cs),
 
       _section('第一步：认识棋盘和棋子', [
         '围棋的棋盘是 19×19 的网格，一共 361 个交叉点。',
         '（你也可以选 13×13 或 9×9 的小棋盘来练习。）',
         '棋子只有两种颜色：黑色和白色。黑棋有 181 颗，白棋有 180 颗。',
         '棋子要下在交叉点上，不是格子里。',
-      ], night),
+      ], night, cs),
 
       _section('第二步：核心概念——「气」', [
         '「气」是围棋最重要的概念，不理解气就不能下围棋。',
@@ -399,7 +400,7 @@ class TutorialPage extends StatelessWidget {
         '',
         '🔗 连在一起的棋子共享气。',
         '如果你把两个同色的棋子放在相邻的位置，它们就变成了一个整体，共享所有的气。',
-      ], night),
+      ], night, cs),
 
       _section('第三步：游戏规则', [
         '① 黑棋先下，白棋后下，双方轮流落子。',
@@ -408,7 +409,7 @@ class TutorialPage extends StatelessWidget {
         '④ 你不能下在「禁着点」——也就是你下下去后，自己的棋子没气了，而且又不能吃掉对手的棋。这叫「自杀」，不允许。',
         '⑤ 「打劫」规则：不能马上回提一个子。如果对方刚提了你一个子，你不能立刻在那个位置提回来，必须先在别处走一步。',
         '⑥ 如果你觉得无棋可下，可以选择「停一手」（Pass）。双方连续停手，游戏就结束了。',
-      ], night),
+      ], night, cs),
 
       _section('第四步：怎样算赢？（中国规则）', [
         '游戏结束后，用「数子法」计算胜负：',
@@ -421,7 +422,7 @@ class TutorialPage extends StatelessWidget {
         '⑥ 白棋需要 180.5 - 3.75 = 176.75 个点才能赢，也就是 177 个子或以上。',
         '',
         '看不懂这个计算没关系！游戏会帮你自动算的。你只需知道：谁围的地盘（自己的子 + 围住的空）多谁就赢。',
-      ], night),
+      ], night, cs),
 
       _section('第五步：新手入门策略', [
         '🌟 金角银边草肚皮',
@@ -438,7 +439,7 @@ class TutorialPage extends StatelessWidget {
         '',
         '🌟 别贪吃子',
         '新手最容易犯的错误就是拼命追着吃子，结果自己围的地盘反而小了。记住：围地 > 吃子。',
-      ], night),
+      ], night, cs),
 
       _section('第六步：围棋常用术语速查', [
         '气 —— 棋子旁边的空交叉点',
@@ -451,20 +452,20 @@ class TutorialPage extends StatelessWidget {
         '眼 —— 一块棋围出的空点，用来保证活棋',
         '双活 —— 双方互相包围但谁也吃不掉谁',
         '官子 —— 终局前最后的边界争夺',
-      ], night),
+      ], night, cs),
     ]);
   }
 
   // ═══════════════════════════════════════════════════════════════
   //  换牌扑克
   // ═══════════════════════════════════════════════════════════════
-  Widget _pokerDraw(bool night) {
+  Widget _pokerDraw(bool night, ColorScheme cs) {
     return Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
       _section('欢迎来到换牌扑克！', [
         '换牌扑克（也叫 Draw Poker）是最经典的扑克玩法之一。',
         '你不需要会任何复杂的扑克技巧，只需要知道牌的大小顺序就行。',
         '游戏规则很简单：每人发 5 张牌，你可以换掉其中几张，最后比谁的牌大。',
-      ], night),
+      ], night, cs),
 
       _section('游戏流程（一步步来）', [
         '① 游戏开始时，你和 AI 各发 5 张牌。',
@@ -473,7 +474,7 @@ class TutorialPage extends StatelessWidget {
         '④ 你最多可以换 3 张牌（也可以选择不换）。',
         '⑤ 确定后点击「换牌」按钮，你和 AI 同时换掉选中的牌。',
         '⑥ 换牌完成后，双方亮牌比大小。',
-      ], night),
+      ], night, cs),
 
       _section('牌型大小（从最大到最小，必须记住！）', [
         '',
@@ -489,7 +490,7 @@ class TutorialPage extends StatelessWidget {
         '🥇 高牌 —— 以上啥都没有，比最大的那张牌',
         '',
         '数字大小：A > K > Q > J > 10 > 9 > 8 > 7 > 6 > 5 > 4 > 3 > 2',
-      ], night),
+      ], night, cs),
 
       _section('新手换牌策略', [
         '✅ 如果你已经有了一对，保留那一对，换掉其他 3 张——争取凑成三条或四条。',
@@ -499,20 +500,20 @@ class TutorialPage extends StatelessWidget {
         '❌ 如果 5 张牌完全没联系，全部换掉！反正留着也没用。',
         '',
         '记住：保留对子永远比保留杂牌好。',
-      ], night),
+      ], night, cs),
     ]);
   }
 
   // ═══════════════════════════════════════════════════════════════
   //  德州扑克
   // ═══════════════════════════════════════════════════════════════
-  Widget _pokerHoldem(bool night) {
+  Widget _pokerHoldem(bool night, ColorScheme cs) {
     return Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
       _section('欢迎来到德州扑克！', [
         '德州扑克（Texas Hold\'em）是当今全世界最流行的扑克玩法。',
         '你肯定在电视上看过 WSOP（世界扑克系列赛），那些职业选手玩的就是这个。',
         '不过别紧张，我们这个版本简化了很多——没有下注环节，纯粹比牌的大小。',
-      ], night),
+      ], night, cs),
 
       _section('游戏流程', [
         '① 游戏开始：你和 AI 各发 2 张「底牌」。你能看到自己的底牌，AI 的你看不到。',
@@ -523,14 +524,14 @@ class TutorialPage extends StatelessWidget {
         '③ 最终，从你的 2 张底牌 + 5 张公共牌（共 7 张）中，选出最好的 5 张组合。',
         '④ AI 也同样从它的 2 张底牌 + 5 张公共牌中选最好的 5 张。',
         '⑤ 双方比大小。',
-      ], night),
+      ], night, cs),
 
       _section('牌型大小（和换牌扑克一样）', [
         '🥇 皇家同花顺 → 同花顺 → 四条 → 葫芦 → 同花',
         '→ 顺子 → 三条 → 两对 → 一对 → 高牌',
         '',
         '如果你还不熟悉这些牌型，请看上一节（换牌扑克）的详细解释。',
-      ], night),
+      ], night, cs),
 
       _section('新手入门技巧', [
         '',
@@ -549,7 +550,7 @@ class TutorialPage extends StatelessWidget {
         '🎯 位置很重要',
         '德州扑克中「后位」（最后行动）有很大优势，因为你看到对手行动后再决定。',
         '在我们的简化版中虽然没有下注，但这个思维可以帮你理解真实的德州扑克。',
-      ], night),
+      ], night, cs),
 
       _section('小测试：你能认出这些牌吗？', [
         '你的手牌：K♠ K♥',
@@ -559,41 +560,41 @@ class TutorialPage extends StatelessWidget {
         '你的手牌：A♠ Q♠',
         '公共牌：K♠ J♠ 10♠ 3♣ 2♥',
         '你的最佳 5 张：A♠ K♠ Q♠ J♠ 10♠ —— 皇家同花顺！！无敌！！',
-      ], night),
+      ], night, cs),
     ]);
   }
 
   // ═══════════════════════════════════════════════════════════════
   //  扑克（合并入口）
   // ═══════════════════════════════════════════════════════════════
-  Widget _pokerBoth(bool night) {
+  Widget _pokerBoth(bool night, ColorScheme cs) {
     return Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
       _section('扑克游戏概览', [
         '本应用包含两种扑克玩法：换牌扑克和德州扑克。',
         '它们的牌型大小是完全一样的，只是游戏流程不同。',
         '',
         '👉 点上面的「扑克」按钮，进入后可以选择具体模式。',
-      ], night),
+      ], night, cs),
 
       _section('牌型大小（两种玩法通用）', [
         '🥇 皇家同花顺 > 同花顺 > 四条 > 葫芦 > 同花',
         '> 顺子 > 三条 > 两对 > 一对 > 高牌',
         '',
         '各牌型的详细解释请查看「换牌扑克」或「德州扑克」的独立教程。',
-      ], night),
+      ], night, cs),
     ]);
   }
 
   // ═══════════════════════════════════════════════════════════════
   //  UNO
   // ═══════════════════════════════════════════════════════════════
-  Widget _uno(bool night) {
+  Widget _uno(bool night, ColorScheme cs) {
     return Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
       _section('欢迎来玩 UNO！', [
         'UNO 是全世界最受欢迎的纸牌游戏之一，适合多人聚会时玩。',
         '别被那些花花绿绿的功能牌吓到，规则其实很直接。',
         '一句话核心：先出完手牌的人赢。',
-      ], night),
+      ], night, cs),
 
       _section('UNO 牌长什么样？', [
         '一副 UNO 牌有 108 张，分 4 种颜色：',
@@ -603,7 +604,7 @@ class TutorialPage extends StatelessWidget {
         '① 数字牌（0-9）—— 每种颜色都有，最简单的牌。',
         '② 功能牌 —— Skip（跳）、Reverse（反转）、+2（罚两张）',
         '③ 万能牌 —— Wild（选颜色）、Wild +4（选颜色 + 罚四张）',
-      ], night),
+      ], night, cs),
 
       _section('核心规则（必读）', [
         '',
@@ -618,7 +619,7 @@ class TutorialPage extends StatelessWidget {
         '',
         '📌 如果你出了倒数第二张牌（只剩 1 张时）：必须喊「UNO」！',
         '  如果你忘了喊，被对手发现，要罚摸 2 张牌！',
-      ], night),
+      ], night, cs),
 
       _section('功能牌详解', [
         '',
@@ -635,7 +636,7 @@ class TutorialPage extends StatelessWidget {
         '',
         '🌈 Wild +4（万能 +4） —— 和 Wild 一样指定颜色，并且下家罚摸 4 张、跳过本轮。',
         '  注意：官方规则说只能在「你手上没有当前颜色可出的牌」时使用。',
-      ], night),
+      ], night, cs),
 
       _section('特殊规则说明', [
         '❓ +2 和 +4 能不能叠加？',
@@ -645,7 +646,7 @@ class TutorialPage extends StatelessWidget {
         '如果你怀疑对手出了 Wild +4 但他手上其实有当前颜色的牌，你可以质疑。',
         '如果查证属实他确实有，他罚摸 4 张；如果他没有，你罚摸 2 张。',
         '（本应用的 AI 不会故意犯规，所以不用担心这个问题。）',
-      ], night),
+      ], night, cs),
 
       _section('新手策略', [
         '🎯 优先出功能牌和万能牌，把数字牌留到最后。',
@@ -653,26 +654,26 @@ class TutorialPage extends StatelessWidget {
         '🎯 有多个同色牌时，先出大的数字。',
         '🎯 Wild +4 是杀手锏——不仅能让对手摸 4 张，还能强行改变颜色打断对手节奏。',
         '🎯 别忘了喊 UNO！只剩最后一张牌时必须喊。',
-      ], night),
+      ], night, cs),
     ]);
   }
 
   // ═══════════════════════════════════════════════════════════════
   //  蜘蛛纸牌
   // ═══════════════════════════════════════════════════════════════
-  Widget _spider(bool night) {
+  Widget _spider(bool night, ColorScheme cs) {
     return Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
       _section('欢迎来玩蜘蛛纸牌！', [
         '蜘蛛纸牌（Spider Solitaire）是 Windows 系统上最经典的纸牌游戏之一。',
         '你可能在别人电脑上见过——一个人把牌翻来翻去，非常解压。',
         '目标是：把所有的牌按顺序理好，消除掉。',
-      ], night),
+      ], night, cs),
 
       _section('游戏目标（一句话）', [
         '🎯 把全部 104 张牌排列成 8 组 K → Q → J → ... → 2 → A（全部同花色）的完整降序序列。',
         '每完成一组，这组牌就会自动消除，给你加分。',
         '全部 8 组都消除 = 你赢了！',
-      ], night),
+      ], night, cs),
 
       _section('棋盘布局长这样', [
         '游戏区域有 10 列：',
@@ -683,7 +684,7 @@ class TutorialPage extends StatelessWidget {
         '你需要通过移动牌，把暗牌一个个翻开。',
         '',
         '右下角有一摞牌堆，里面有 50 张牌。每次点击牌堆，它会往 10 列各发 1 张牌。',
-      ], night),
+      ], night, cs),
 
       _section('怎么移牌？（规则）', [
         '',
@@ -702,14 +703,14 @@ class TutorialPage extends StatelessWidget {
         '',
         '📌 点击暗牌翻开：',
         '如果你把一列最上面的明牌移走了，下面的暗牌就会自动翻成明牌。',
-      ], night),
+      ], night, cs),
 
       _section('发牌规则（重要！）', [
         '📌 任何时候点击右下角的牌堆，会往 10 列各发 1 张明牌。',
         '📌 发牌的前提是：所有 10 列都不能是空的（每列至少要有 1 张牌）。',
         '📌 总共有 50 张牌可以发（50 ÷ 10 = 5 次发牌机会）。',
         '📌 所以发牌前，尽量先移动牌把空列填满。',
-      ], night),
+      ], night, cs),
 
       _section('三种难度有什么区别？', [
         '',
@@ -718,7 +719,7 @@ class TutorialPage extends StatelessWidget {
         '🔴 困难（四色）：黑桃 ♠ 红心 ♥ 梅花 ♣ 方块 ♦。最难！',
         '',
         '建议新手先从「简单」开始，熟悉了再挑战更难的。',
-      ], night),
+      ], night, cs),
 
       _section('高手的秘诀', [
         '🥇 尽最大努力清空一列！空列是整个游戏最关键的资源。',
@@ -726,20 +727,20 @@ class TutorialPage extends StatelessWidget {
         '🥇 发牌前先把能翻的暗牌都翻出来。',
         '🥇 移动时先考虑长序列——能一次性移动的牌越多越好。',
         '🥇 如果某列顶牌是 K，把它放到空列上——让 K 当新列的开头。',
-      ], night),
+      ], night, cs),
     ]);
   }
 
   // ═══════════════════════════════════════════════════════════════
   //  斗地主
   // ═══════════════════════════════════════════════════════════════
-  Widget _doudizhu(bool night) {
+  Widget _doudizhu(bool night, ColorScheme cs) {
     return Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
       _section('欢迎来学斗地主！', [
         '斗地主是全中国最火的纸牌游戏，没有之一。',
         '你肯定见过亲友们过年过节凑在一起斗地主——热闹、刺激、还要动脑子。',
         '标准的斗地主是 3 个人玩的（1 个地主 vs 2 个农民），我们的版本中另外 2 个农民由 AI 扮演。',
-      ], night),
+      ], night, cs),
 
       _section('游戏用牌', [
         '斗地主使用一副标准的 54 张扑克牌（含大小王）。',
@@ -747,7 +748,7 @@ class TutorialPage extends StatelessWidget {
         '3 < 4 < 5 < 6 < 7 < 8 < 9 < 10 < J < Q < K < A < 2 < 小王 < 大王',
         '',
         '注意：A 在这里比 K 大，2 比 A 大，王是最大的！',
-      ], night),
+      ], night, cs),
 
       _section('游戏流程（一步步来）', [
         '',
@@ -771,7 +772,7 @@ class TutorialPage extends StatelessWidget {
         '步骤⑤：谁先出完谁赢',
         '地主先出完 → 地主赢了。',
         '任意一个农民先出完 → 农民方赢了（两个农民是一伙的）。',
-      ], night),
+      ], night, cs),
 
       _section('认识牌型（最重要的部分）', [
         '',
@@ -795,7 +796,7 @@ class TutorialPage extends StatelessWidget {
         '🚀 火箭：大王 + 小王。火箭是最大的，可以压过一切，包括炸弹！',
         '',
         '注意：同类型牌才能比较大小，而且张数必须一样多。',
-      ], night),
+      ], night, cs),
 
       _section('出牌规则详解', [
         '',
@@ -812,7 +813,7 @@ class TutorialPage extends StatelessWidget {
         '',
         '🔹 过牌（不出）：',
         '轮到你了，你可以选择不出。连续两家不出，最后出牌者重新领出。',
-      ], night),
+      ], night, cs),
 
       _section('新手快速入门技巧', [
         '',
@@ -829,14 +830,14 @@ class TutorialPage extends StatelessWidget {
         '🎯 有炸弹不要急着出——等关键时刻再用。',
         '',
         '💡 如果你不知道出什么，点击「提示」按钮，系统会推荐可出的牌。',
-      ], night),
+      ], night, cs),
     ]);
   }
 
   // ═══════════════════════════════════════════════════════════════
   //  通用组件
   // ═══════════════════════════════════════════════════════════════
-  Widget _section(String title, List<String> items, bool night) {
+  Widget _section(String title, List<String> items, bool night, ColorScheme cs) {
     return Padding(
       padding: const EdgeInsets.only(bottom: 20),
       child: Column(
@@ -850,7 +851,7 @@ class TutorialPage extends StatelessWidget {
               borderRadius: BorderRadius.circular(8),
             ),
             child: Text(title,
-                style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: AppThemeColors.primary(night))),
+                style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: cs.primary)),
           ),
           const SizedBox(height: 8),
           ...items.map((item) => Padding(
@@ -877,13 +878,13 @@ class TutorialPage extends StatelessWidget {
                       item.startsWith('👉') || item.startsWith('🤝') ||
                       item.startsWith('💡')
                   ? const SizedBox(width: 16)
-                  : Text('•  ', style: TextStyle(color: AppThemeColors.primary(night))),
+                  : Text('•  ', style: TextStyle(color: cs.primary)),
               Expanded(
                 child: Text(
                   item,
                   style: TextStyle(
                     fontSize: 14,
-                    color: AppThemeColors.subtitle(night),
+                    color: cs.onSurfaceVariant,
                     height: item.isEmpty ? 0.5 : 1.5,
                   ),
                 ),

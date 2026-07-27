@@ -35,10 +35,10 @@ void main() {
   // 拦截所有 debugPrint / 错误
   FlutterError.onError = (details) {
     FlutterError.presentError(details);
-    lp.e('[FLUTTER]', '${details.exception}\\n${details.stack}');
+    lp.e('[FLUTTER]', '${details.exception}\n${details.stack}');
   };
   WidgetsBinding.instance.platformDispatcher.onError = (error, stack) {
-    lp.e('[PLATFORM]', '$error\\n$stack');
+    lp.e('[PLATFORM]', '$error\n$stack');
     return true;
   };
   final originalDebugPrint = debugPrint;
@@ -75,9 +75,7 @@ class _ChessAppState extends State<ChessApp> {
   final _navigatorKey = GlobalKey<NavigatorState>();
 
   void _toggleTheme(BuildContext context) {
-    final newMode = context.read<ThemeProvider>().toggleManual();
-    final labels = {ThemeMode.light: '日间', ThemeMode.dark: '夜间', ThemeMode.system: '系统'};
-    log('SETTINGS', '手动切换主题 → ${labels[newMode] ?? newMode}');
+    context.read<ThemeProvider>().toggleManual();
   }
 
   @override
@@ -85,14 +83,13 @@ class _ChessAppState extends State<ChessApp> {
     final themeProvider = context.watch<ThemeProvider>();
     return DynamicColorBuilder(
       builder: (lightScheme, darkScheme) {
-        // 系统支持动态取色时更新全局色彩
+        // 更新向后兼容的颜色缓存
         if (lightScheme != null && darkScheme != null) {
           AppThemeColors.updateFromDynamic(
             lightScheme: lightScheme,
             darkScheme: darkScheme,
           );
         }
-
         return MaterialApp(
           title: '弈',
           debugShowCheckedModeBanner: false,
@@ -140,7 +137,6 @@ class _ChessAppState extends State<ChessApp> {
               case '/about':
                 return _page(const AboutPage());
               case '/logs':
-                log('NAV', '日志终端');
                 return _page(const LogPage());
               case '/engine_select':
                 return _page(const EngineSelectionPage());
@@ -171,7 +167,6 @@ class _ChessAppState extends State<ChessApp> {
     );
   }
 
-  /// 页面路由 — 弹簧缓动滑入 + 淡入
   PageRouteBuilder _page(Widget page) {
     return PageRouteBuilder(
       pageBuilder: (_, __, ___) => page,

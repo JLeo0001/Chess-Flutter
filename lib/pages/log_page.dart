@@ -2,9 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 import '../models/log_provider.dart';
-import '../themes/app_theme.dart';
 
-/// 日志终端页面 — 实时滚动、过滤、搜索、颜色编码、复制
+/// 日志终端页面 — M3 FilterChip + ListTile 风格
 class LogPage extends StatefulWidget {
   const LogPage({super.key});
 
@@ -18,14 +17,12 @@ class _LogPageState extends State<LogPage> {
   bool _autoScroll = true;
   LogProvider? _logProv;
 
-  // 过滤状态
   LogLevel? _levelFilter;
   String _searchQuery = '';
   String _tagFilter = '';
   bool _showStats = false;
   bool _showSearch = false;
 
-  // 展开的日志条目索引
   final _expandedIndices = <int>{};
 
   @override
@@ -74,9 +71,8 @@ class _LogPageState extends State<LogPage> {
   void initState() {
     super.initState();
     _scrollController.addListener(_scrollListener);
-    _searchController.addListener(() {
-      setState(() => _searchQuery = _searchController.text);
-    });
+    _searchController.addListener(
+        () => setState(() => _searchQuery = _searchController.text));
   }
 
   List<LogEntry> _filtered(List<LogEntry> entries) {
@@ -100,230 +96,150 @@ class _LogPageState extends State<LogPage> {
     Clipboard.setData(ClipboardData(text: entry.toFileLine()));
     if (mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('已复制该条日志'),
-          duration: Duration(seconds: 1),
-        ),
+        const SnackBar(content: Text('已复制该条日志'), duration: Duration(seconds: 1)),
       );
     }
   }
 
   @override
   Widget build(BuildContext context) {
-    final night = Theme.of(context).brightness == Brightness.dark;
+    final cs = Theme.of(context).colorScheme;
     final logProv = context.watch<LogProvider>();
     final all = logProv.entries;
     final filtered = _filtered(all);
     final stats = logProv.computeStats();
 
     return Scaffold(
-      body: SafeArea(
-        child: Column(children: [
-          // ═══════ 顶栏 ═══════
-          Container(
-            padding: const EdgeInsets.fromLTRB(4, 4, 4, 0),
-            child: Column(children: [
-              Row(children: [
-                IconButton(
-                  icon: const Icon(Icons.arrow_back),
-                  onPressed: () => Navigator.pop(context),
-                  color: AppThemeColors.primary(night),
-                ),
-                const SizedBox(width: 4),
-                Text('运行日志',
-                    style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold,
-                        color: AppThemeColors.title(night))),
-                const Spacer(),
-                // 统计
-                IconButton(
-                  icon: Icon(_showStats ? Icons.bar_chart : Icons.bar_chart_outlined,
-                      size: 20),
-                  tooltip: '统计',
-                  onPressed: () => setState(() => _showStats = !_showStats),
-                  color: AppThemeColors.primary(night),
-                ),
-                // 搜索
-                IconButton(
-                  icon: Icon(_showSearch ? Icons.search_off : Icons.search,
-                      size: 20),
-                  tooltip: '搜索',
-                  onPressed: () => setState(() => _showSearch = !_showSearch),
-                  color: AppThemeColors.primary(night),
-                ),
-                // 自动滚动
-                Switch(
-                  value: _autoScroll,
-                  onChanged: (v) {
-                    setState(() => _autoScroll = v);
-                    if (v) _onNewLog();
-                  },
-                  activeColor: AppThemeColors.primary(night),
-                  materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                ),
-                // 复制
-                IconButton(
-                  icon: const Icon(Icons.copy, size: 18),
-                  tooltip: '复制全部',
-                  onPressed: () {
-                    Clipboard.setData(ClipboardData(text: logProv.fullText));
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(content: Text('已复制到剪贴板'),
-                          duration: Duration(seconds: 1)),
-                    );
-                  },
-                  color: AppThemeColors.primary(night),
-                ),
-                // 清空
-                IconButton(
-                  icon: const Icon(Icons.delete_outline, size: 18),
-                  tooltip: '清空',
-                  onPressed: () => logProv.clear(),
-                  color: AppThemeColors.subtitle(night),
-                ),
-              ]),
-              // 搜索栏
-              if (_showSearch)
-                Padding(
-                  padding: const EdgeInsets.fromLTRB(12, 4, 12, 4),
-                  child: TextField(
-                    controller: _searchController,
-                    style: TextStyle(
-                      fontSize: 13,
-                      color: AppThemeColors.title(night),
-                    ),
-                    decoration: InputDecoration(
-                      hintText: '搜索日志内容或标签…',
-                      hintStyle: TextStyle(
-                        fontSize: 13,
-                        color: AppThemeColors.subtitle(night),
-                      ),
-                      prefixIcon: Icon(Icons.search, size: 18,
-                          color: AppThemeColors.subtitle(night)),
-                      suffixIcon: _searchQuery.isNotEmpty
-                          ? IconButton(
-                              icon: Icon(Icons.clear, size: 18,
-                                  color: AppThemeColors.subtitle(night)),
-                              onPressed: () => _searchController.clear(),
-                            )
-                          : null,
-                      filled: true,
-                      fillColor: AppThemeColors.highlight(night),
-                      contentPadding: const EdgeInsets.symmetric(
-                          horizontal: 12, vertical: 8),
-                      border: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(10),
-                        borderSide: BorderSide(
-                            color: AppThemeColors.divider(night)),
-                      ),
-                      enabledBorder: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(10),
-                        borderSide: BorderSide(
-                            color: AppThemeColors.divider(night)),
-                      ),
-                    ),
-                  ),
-                ),
-              // 过滤芯片
-              _buildFilterChips(night, stats),
-            ]),
+      appBar: AppBar(
+        title: const Text('运行日志'),
+        actions: [
+          IconButton(
+            icon: Icon(_showStats ? Icons.bar_chart : Icons.bar_chart_outlined, size: 20),
+            tooltip: '统计',
+            onPressed: () => setState(() => _showStats = !_showStats),
           ),
-          Divider(height: 1, color: AppThemeColors.divider(night)),
-
-          // ═══════ 统计面板 ═══════
-          if (_showStats) _buildStatsPanel(night, stats),
-
-          // ═══════ 日志列表 ═══════
-          Expanded(
-            child: filtered.isEmpty
-                ? Center(
-                    child: Column(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Icon(Icons.inbox_outlined, size: 40,
-                            color: AppThemeColors.subtitle(night)),
-                        const SizedBox(height: 8),
-                        Text(all.isEmpty ? '暂无日志' : '无匹配日志',
-                            style: TextStyle(fontSize: 14,
-                                color: AppThemeColors.subtitle(night))),
-                      ],
-                    ),
-                  )
-                : ListView.builder(
-                    controller: _scrollController,
-                    padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                    itemCount: filtered.length,
-                    itemBuilder: (_, i) {
-                      final e = filtered[i];
-                      final isExpanded = _expandedIndices.contains(i);
-                      return _LogEntryWidget(
-                        entry: e,
-                        isExpanded: isExpanded,
-                        onTap: () {
-                          setState(() {
-                            if (isExpanded) {
-                              _expandedIndices.remove(i);
-                            } else {
-                              _expandedIndices.add(i);
-                            }
-                          });
-                        },
-                        onLongPress: () => _copySingle(e),
-                        night: night,
-                      );
-                    },
-                  ),
+          IconButton(
+            icon: Icon(_showSearch ? Icons.search_off : Icons.search, size: 20),
+            tooltip: '搜索',
+            onPressed: () => setState(() => _showSearch = !_showSearch),
           ),
-
-          // ═══════ 底栏 ═══════
-          _buildBottomBar(night, all.length, filtered.length, logProv),
-        ]),
+          Switch(
+            value: _autoScroll,
+            onChanged: (v) {
+              setState(() => _autoScroll = v);
+              if (v) _onNewLog();
+            },
+          ),
+          IconButton(
+            icon: const Icon(Icons.copy, size: 18),
+            tooltip: '复制全部',
+            onPressed: () {
+              Clipboard.setData(ClipboardData(text: logProv.fullText));
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(content: Text('已复制到剪贴板'), duration: Duration(seconds: 1)),
+              );
+            },
+          ),
+          IconButton(
+            icon: const Icon(Icons.delete_outline, size: 18),
+            tooltip: '清空',
+            onPressed: () => logProv.clear(),
+          ),
+        ],
       ),
+      body: Column(children: [
+        // 搜索栏
+        if (_showSearch)
+          Padding(
+            padding: const EdgeInsets.fromLTRB(12, 4, 12, 0),
+            child: TextField(
+              controller: _searchController,
+              decoration: InputDecoration(
+                hintText: '搜索日志内容或标签…',
+                prefixIcon: Icon(Icons.search, size: 18),
+                suffixIcon: _searchQuery.isNotEmpty
+                    ? IconButton(
+                        icon: Icon(Icons.clear, size: 18),
+                        onPressed: () => _searchController.clear(),
+                      )
+                    : null,
+                isDense: true,
+                contentPadding:
+                    const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+              ),
+            ),
+          ),
+        // 过滤芯片
+        _filterChips(context, cs, stats),
+        const Divider(height: 1),
+        // 统计
+        if (_showStats) _statsPanel(cs, stats),
+        // 日志列表
+        Expanded(
+          child: filtered.isEmpty
+              ? Center(
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(Icons.inbox_outlined,
+                          size: 40, color: cs.onSurfaceVariant),
+                      const SizedBox(height: 8),
+                      Text(all.isEmpty ? '暂无日志' : '无匹配日志',
+                          style: TextStyle(
+                              fontSize: 14, color: cs.onSurfaceVariant)),
+                    ],
+                  ),
+                )
+              : ListView.builder(
+                  controller: _scrollController,
+                  padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 2),
+                  itemCount: filtered.length,
+                  itemBuilder: (_, i) {
+                    final e = filtered[i];
+                    final isExpanded = _expandedIndices.contains(i);
+                    return _logEntry(
+                      e, isExpanded, i, cs);
+                  },
+                ),
+        ),
+        // 底栏
+        _bottomBar(cs, all.length, filtered.length, logProv),
+      ]),
     );
   }
 
-  // ═══════════════════════ 过滤芯片 ═══════════════════════
-
-  Widget _buildFilterChips(bool night, LogStats stats) {
+  Widget _filterChips(BuildContext context, ColorScheme cs, LogStats stats) {
     return Padding(
       padding: const EdgeInsets.fromLTRB(8, 4, 8, 4),
       child: SingleChildScrollView(
         scrollDirection: Axis.horizontal,
         child: Row(children: [
-          // 级别过滤
-          _FilterChip(
-            label: '全部',
+          FilterChip(
+            label: Text('全部 ${stats.total}'),
             selected: _levelFilter == null,
-            count: stats.total,
-            night: night,
-            onTap: () => setState(() => _levelFilter = null),
+            onSelected: (_) => setState(() => _levelFilter = null),
           ),
           const SizedBox(width: 4),
           for (final lv in LogLevel.values)
             if (stats.levelCount(lv) > 0)
               Padding(
                 padding: const EdgeInsets.only(right: 4),
-                child: _FilterChip(
-                  label: lv.short,
+                child: FilterChip(
+                  label: Text('${lv.short} ${stats.levelCount(lv)}'),
                   selected: _levelFilter == lv,
-                  count: stats.levelCount(lv),
-                  color: _levelColor(lv, night),
-                  night: night,
-                  onTap: () => setState(() {
+                  onSelected: (_) => setState(() {
                     _levelFilter = _levelFilter == lv ? null : lv;
                   }),
                 ),
               ),
           const SizedBox(width: 8),
-          // 标签过滤
-          for (final tag in stats.perTag.keys.take(8))
+          for (final tag in stats.perTag.keys.take(6))
             Padding(
               padding: const EdgeInsets.only(right: 4),
-              child: _FilterChip(
-                label: tag,
+              child: FilterChip(
+                label: Text('$tag ${stats.tagCount(tag)}'),
                 selected: _tagFilter == tag,
-                count: stats.tagCount(tag),
-                night: night,
-                onTap: () => setState(() {
+                onSelected: (_) => setState(() {
                   _tagFilter = _tagFilter == tag ? '' : tag;
                 }),
               ),
@@ -333,75 +249,71 @@ class _LogPageState extends State<LogPage> {
     );
   }
 
-  // ═══════════════════════ 统计面板 ═══════════════════════
-
-  Widget _buildStatsPanel(bool night, LogStats stats) {
+  Widget _statsPanel(ColorScheme cs, LogStats stats) {
     return Container(
       padding: const EdgeInsets.all(8),
-      color: AppThemeColors.highlight(night),
+      color: cs.surfaceContainerHighest,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text('日志统计',
-              style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600,
-                  color: AppThemeColors.primary(night))),
+              style: TextStyle(
+                  fontSize: 12,
+                  fontWeight: FontWeight.w600,
+                  color: cs.primary)),
           const SizedBox(height: 4),
-          Row(children: [
-            _statChip('总数', stats.total, null, night),
-            for (final lv in LogLevel.values)
-              if (stats.levelCount(lv) > 0)
-                _statChip(lv.short, stats.levelCount(lv), _levelColor(lv, night), night),
-          ]),
-          const SizedBox(height: 4),
-          Wrap(spacing: 6, runSpacing: 2,
-            children: stats.perTag.entries.take(12).map((e) {
-              return Text('${e.key}:${e.value}',
-                  style: TextStyle(fontSize: 10, fontFamily: 'monospace',
-                      color: AppThemeColors.subtitle(night)));
-            }).toList(),
+          Wrap(
+            spacing: 8,
+            runSpacing: 2,
+            children: [
+              _statChip('总数', stats.total, null, cs),
+              for (final lv in LogLevel.values)
+                if (stats.levelCount(lv) > 0)
+                  _statChip(lv.short, stats.levelCount(lv),
+                      _levelColor(lv, cs), cs),
+            ],
           ),
         ],
       ),
     );
   }
 
-  Widget _statChip(String label, int count, Color? color, bool night) {
-    return Padding(
-      padding: const EdgeInsets.only(right: 8),
-      child: Row(mainAxisSize: MainAxisSize.min, children: [
-        if (color != null)
-          Container(width: 8, height: 8, decoration: BoxDecoration(
-            color: color, shape: BoxShape.circle)),
-        if (color != null) const SizedBox(width: 3),
-        Text('$label:$count',
-            style: TextStyle(fontSize: 11, fontWeight: FontWeight.w600,
-                color: color ?? AppThemeColors.title(night))),
-      ]),
-    );
+  Widget _statChip(String label, int count, Color? color, ColorScheme cs) {
+    return Row(mainAxisSize: MainAxisSize.min, children: [
+      if (color != null)
+        Container(
+            width: 8,
+            height: 8,
+            decoration: BoxDecoration(color: color, shape: BoxShape.circle)),
+      if (color != null) const SizedBox(width: 3),
+      Text('$label:$count',
+          style: TextStyle(
+              fontSize: 11,
+              fontWeight: FontWeight.w600,
+              color: color ?? cs.onSurface)),
+    ]);
   }
 
-  // ═══════════════════════ 底栏 ═══════════════════════
-
-  Widget _buildBottomBar(bool night, int total, int filtered, LogProvider lp) {
+  Widget _bottomBar(
+      ColorScheme cs, int total, int filtered, LogProvider lp) {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 5),
-      color: AppThemeColors.highlight(night),
+      color: cs.surfaceContainerHighest,
       child: Row(children: [
-        Icon(Icons.filter_list, size: 12, color: AppThemeColors.subtitle(night)),
+        Icon(Icons.filter_list, size: 12, color: cs.onSurfaceVariant),
         const SizedBox(width: 4),
         Text(
-          total == filtered
-              ? '$total 条'
-              : '$filtered / $total 条',
-          style: TextStyle(fontSize: 11, color: AppThemeColors.subtitle(night)),
+          total == filtered ? '$total 条' : '$filtered / $total 条',
+          style: TextStyle(fontSize: 11, color: cs.onSurfaceVariant),
         ),
-        if (_levelFilter != null || _tagFilter.isNotEmpty || _searchQuery.isNotEmpty)
+        if (_levelFilter != null ||
+            _tagFilter.isNotEmpty ||
+            _searchQuery.isNotEmpty)
           TextButton(
             onPressed: () => setState(() {
               _levelFilter = null;
               _tagFilter = '';
               _searchController.clear();
-              _searchQuery = '';
             }),
             style: TextButton.styleFrom(
               padding: const EdgeInsets.symmetric(horizontal: 6),
@@ -409,222 +321,140 @@ class _LogPageState extends State<LogPage> {
               tapTargetSize: MaterialTapTargetSize.shrinkWrap,
             ),
             child: Text('清除过滤',
-                style: TextStyle(fontSize: 11,
-                    color: AppThemeColors.primary(night))),
+                style: TextStyle(fontSize: 11, color: cs.primary)),
           ),
         const Spacer(),
         Text('${lp.fullText.length ~/ 1024} KB',
-            style: TextStyle(fontSize: 11, color: AppThemeColors.subtitle(night))),
+            style: TextStyle(fontSize: 11, color: cs.onSurfaceVariant)),
       ]),
     );
   }
 
-  // ═══════════════════════ 颜色 ═══════════════════════
-
-  Color _levelColor(LogLevel lv, bool night) {
-    switch (lv) {
-      case LogLevel.debug: return Colors.grey;
-      case LogLevel.info: return night ? const Color(0xFF64B5F6) : const Color(0xFF1565C0);
-      case LogLevel.warn: return night ? const Color(0xFFFFD54F) : const Color(0xFFF57F17);
-      case LogLevel.error: return night ? const Color(0xFFEF5350) : const Color(0xFFC62828);
-      case LogLevel.fatal: return night ? const Color(0xFFCE93D8) : const Color(0xFF6A1B9A);
-    }
-  }
-}
-
-// ═══════════════════════════════════════════════
-//  过滤芯片组件
-// ═══════════════════════════════════════════════
-
-class _FilterChip extends StatelessWidget {
-  final String label;
-  final bool selected;
-  final int count;
-  final Color? color;
-  final bool night;
-  final VoidCallback onTap;
-
-  const _FilterChip({
-    required this.label, required this.selected, required this.count,
-    this.color, required this.night, required this.onTap,
-  });
-
-  @override
-  Widget build(BuildContext context) {
+  Widget _logEntry(LogEntry e, bool isExpanded, int i, ColorScheme cs) {
+    final lvColor = _levelColor(e.level, cs);
     return GestureDetector(
-      onTap: onTap,
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-        decoration: BoxDecoration(
-          color: selected
-              ? (color ?? AppThemeColors.primary(night)).withAlpha(40)
-              : AppThemeColors.highlight(night),
-          borderRadius: BorderRadius.circular(12),
-          border: Border.all(
-            color: selected
-                ? (color ?? AppThemeColors.primary(night))
-                : AppThemeColors.divider(night),
-            width: selected ? 1.5 : 1,
-          ),
-        ),
-        child: Row(mainAxisSize: MainAxisSize.min, children: [
-          Text(label,
-              style: TextStyle(
-                fontSize: 11, fontWeight: FontWeight.w600,
-                color: selected
-                    ? (color ?? AppThemeColors.primary(night))
-                    : AppThemeColors.title(night),
-              )),
-          const SizedBox(width: 3),
-          Text('$count',
-              style: TextStyle(
-                fontSize: 10,
-                color: selected
-                    ? (color ?? AppThemeColors.primary(night))
-                    : AppThemeColors.subtitle(night),
-              )),
-        ]),
-      ),
-    );
-  }
-}
-
-// ═══════════════════════════════════════════════
-//  日志条目组件
-// ═══════════════════════════════════════════════
-
-class _LogEntryWidget extends StatelessWidget {
-  final LogEntry entry;
-  final bool isExpanded;
-  final VoidCallback onTap;
-  final VoidCallback onLongPress;
-  final bool night;
-
-  const _LogEntryWidget({
-    required this.entry, required this.isExpanded,
-    required this.onTap, required this.onLongPress, required this.night,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    final lvColor = _levelColor(entry.level, night);
-    final tagClr = _tagColor(entry.tag, night);
-    final maxLines = isExpanded ? 30 : 3;
-
-    return GestureDetector(
-      onTap: onTap,
-      onLongPress: onLongPress,
+      onTap: () => setState(() {
+        if (isExpanded) {
+          _expandedIndices.remove(i);
+        } else {
+          _expandedIndices.add(i);
+        }
+      }),
+      onLongPress: () => _copySingle(e),
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 3),
         margin: const EdgeInsets.only(bottom: 1),
         decoration: BoxDecoration(
-          color: isExpanded
-              ? lvColor.withAlpha(10)
-              : Colors.transparent,
+          color: isExpanded ? lvColor.withAlpha(10) : Colors.transparent,
           borderRadius: BorderRadius.circular(4),
         ),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // 第一行：时间 级别 标签
             Row(children: [
-              // 级别指示器
               Container(
                 width: 28,
-                padding: const EdgeInsets.symmetric(horizontal: 3, vertical: 1),
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 3, vertical: 1),
                 decoration: BoxDecoration(
                   color: lvColor.withAlpha(35),
                   borderRadius: BorderRadius.circular(3),
                 ),
-                child: Text(entry.level.short,
+                child: Text(e.level.short,
                     textAlign: TextAlign.center,
                     style: TextStyle(
-                      fontSize: 9, fontWeight: FontWeight.bold,
-                      color: lvColor,
-                    )),
+                        fontSize: 9,
+                        fontWeight: FontWeight.bold,
+                        color: lvColor)),
               ),
               const SizedBox(width: 4),
-              // 时间
-              Text(entry.formattedTime,
+              Text(e.formattedTime,
                   style: TextStyle(
-                    fontSize: 10, fontFamily: 'monospace',
-                    color: AppThemeColors.subtitle(night),
-                  )),
+                      fontSize: 10,
+                      fontFamily: 'monospace',
+                      color: cs.onSurfaceVariant)),
               const SizedBox(width: 4),
-              // 标签
-              Text(entry.tag,
+              Text(e.tag,
                   style: TextStyle(
-                    fontSize: 10, fontFamily: 'monospace',
-                    color: tagClr, fontWeight: FontWeight.w600,
-                  )),
-              if (entry.stackTrace != null) ...[
+                      fontSize: 10,
+                      fontFamily: 'monospace',
+                      fontWeight: FontWeight.w600,
+                      color: _tagColor(e.tag))),
+              if (e.stackTrace != null) ...[
                 const SizedBox(width: 4),
-                Icon(Icons.bug_report, size: 10,
-                    color: AppThemeColors.subtitle(night)),
+                Icon(Icons.bug_report, size: 10, color: cs.onSurfaceVariant),
               ],
             ]),
             const SizedBox(height: 2),
-            // 消息
-            Text(entry.message,
-                maxLines: maxLines,
-                overflow: isExpanded ? TextOverflow.visible : TextOverflow.ellipsis,
-                style: TextStyle(
-                  fontSize: 11.5, fontFamily: 'monospace',
-                  height: 1.4,
-                  color: entry.level.severity >= LogLevel.error.severity
-                      ? (night ? const Color(0xFFEF9A9A) : const Color(0xFFC62828))
-                      : AppThemeColors.title(night),
-                  fontWeight: entry.level.severity >= LogLevel.error.severity
-                      ? FontWeight.w500
-                      : FontWeight.normal,
-                )),
-            // 堆栈
-            if (isExpanded && entry.stackTrace != null) ...[
+            Text(
+              e.message,
+              maxLines: isExpanded ? 30 : 3,
+              overflow:
+                  isExpanded ? TextOverflow.visible : TextOverflow.ellipsis,
+              style: TextStyle(
+                fontSize: 11.5,
+                fontFamily: 'monospace',
+                height: 1.4,
+                color: e.level.severity >= LogLevel.error.severity
+                    ? cs.error
+                    : cs.onSurface,
+                fontWeight: e.level.severity >= LogLevel.error.severity
+                    ? FontWeight.w500
+                    : FontWeight.normal,
+              ),
+            ),
+            if (isExpanded && e.stackTrace != null) ...[
               const SizedBox(height: 2),
               Container(
                 padding: const EdgeInsets.all(4),
                 decoration: BoxDecoration(
-                  color: night
-                      ? const Color(0xFF2D2D2D)
-                      : const Color(0xFFF5F5F5),
+                  color: cs.surfaceContainerHighest,
                   borderRadius: BorderRadius.circular(4),
                 ),
-                child: Text(entry.stackTrace!,
+                child: Text(e.stackTrace!,
                     style: TextStyle(
-                      fontSize: 9.5, fontFamily: 'monospace',
-                      height: 1.3,
-                      color: AppThemeColors.subtitle(night),
-                    )),
+                        fontSize: 9.5,
+                        fontFamily: 'monospace',
+                        height: 1.3,
+                        color: cs.onSurfaceVariant)),
               ),
             ],
-            // 展开指示
-            if (!isExpanded && entry.message.length > 150)
+            if (!isExpanded && e.message.length > 150)
               Text('⋯ 点击展开',
-                  style: TextStyle(fontSize: 9,
-                      color: AppThemeColors.subtitle(night))),
+                  style: TextStyle(
+                      fontSize: 9, color: cs.onSurfaceVariant)),
           ],
         ),
       ),
     );
   }
 
-  Color _levelColor(LogLevel lv, bool night) {
+  Color _levelColor(LogLevel lv, ColorScheme cs) {
     switch (lv) {
-      case LogLevel.debug: return Colors.grey;
-      case LogLevel.info: return night ? const Color(0xFF64B5F6) : const Color(0xFF1565C0);
-      case LogLevel.warn: return night ? const Color(0xFFFFD54F) : const Color(0xFFF57F17);
-      case LogLevel.error: return night ? const Color(0xFFEF5350) : const Color(0xFFC62828);
-      case LogLevel.fatal: return night ? const Color(0xFFCE93D8) : const Color(0xFF6A1B9A);
+      case LogLevel.debug:
+        return Colors.grey;
+      case LogLevel.info:
+        return cs.primary;
+      case LogLevel.warn:
+        return Colors.orange;
+      case LogLevel.error:
+        return cs.error;
+      case LogLevel.fatal:
+        return Colors.purple;
     }
   }
 
-  Color _tagColor(String tag, bool night) {
-    final idx = tag.hashCode.abs();
-    const colors = [
-      Color(0xFF64B5F6), Color(0xFF4DD0E1), Color(0xFF81C784),
-      Color(0xFFFFB74D), Color(0xFFBA68C8), Color(0xFFF06292),
-      Color(0xFF4DB6AC), Color(0xFF9575CD), Color(0xFFA1887F),
+  Color _tagColor(String tag) {
+    final colors = [
+      const Color(0xFF64B5F6),
+      const Color(0xFF4DD0E1),
+      const Color(0xFF81C784),
+      const Color(0xFFFFB74D),
+      const Color(0xFFBA68C8),
+      const Color(0xFFF06292),
+      const Color(0xFF4DB6AC),
+      const Color(0xFF9575CD),
     ];
-    return colors[idx % colors.length];
+    return colors[tag.hashCode.abs() % colors.length];
   }
 }
