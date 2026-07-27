@@ -307,8 +307,8 @@ jobs:
             'Depends: libgtk-3-0 (>= 3.24)' \
             'Maintainer: JasonLeoZhou <jleo0001@github.com>' \
             'Description: Chess Board Games' \
-            'All-in-one board game collection with 10 classic games,' \
-            'built-in AI opponents, and day/night themes.' \
+            ' All-in-one board game collection with 10 classic games,' \
+            ' built-in AI opponents, and day/night themes.' \
             > "$PKG/DEBIAN/control"
           # wrapper script
           mkdir -p "$PKG/usr/lib/chess_app"
