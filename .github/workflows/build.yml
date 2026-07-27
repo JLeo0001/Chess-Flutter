@@ -272,15 +272,20 @@ jobs:
 
       - name: Build Windows (release)
         run: |
-          # Flutter 3.27 生成的 cmake config 硬编码 Visual Studio 16 2019，
-          # 但 windows-latest 只有 VS 18。构建前自动修正 generator。
+          # 第一步：触发 CMake config 生成（会失败，但 generated_config.cmake 就生成了）
+          $ErrorActionPreference = 'Continue'
+          flutter build windows --release 2>&1 | Out-Null
+          $ErrorActionPreference = 'Stop'
+          # 第二步：修正 generator
           $config = "windows\flutter\ephemeral\generated_config.cmake"
-          if (Test-Path $config) {
-            (Get-Content $config) -replace 'set\(CMAKE_GENERATOR "Visual Studio 16 2019"',
-              'set(CMAKE_GENERATOR "Visual Studio 17 2022"' | Set-Content $config
-            Write-Host "Patched generator:"
-            Select-String "CMAKE_GENERATOR" $config
-          }
+          Write-Host "=== Fixing generator in $config ==="
+          $content = Get-Content $config -Raw
+          $content = $content -replace
+            'set\(CMAKE_GENERATOR "Visual Studio 16 2019"',
+            'set(CMAKE_GENERATOR "Visual Studio 17 2022"'
+          Set-Content -Path $config -Value $content
+          Select-String "CMAKE_GENERATOR" $config
+          # 第三步：正式构建（Dart 编译有缓存，仅重跑 CMake + link）
           flutter build windows --release
 
       - name: Package with ZIP
