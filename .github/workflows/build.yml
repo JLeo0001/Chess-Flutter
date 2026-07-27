@@ -439,15 +439,32 @@ jobs:
           - name: 📱 iOS (arm64)
             build: |
               cd ios && pod install && cd ..
-              flutter build ios --release --no-codesign
+              if [ -n "${{ secrets.IOS_TEAM_ID }}" ]; then
+                # 注入 Team ID 到 ExportOptions.plist
+                sed -i '' "s/TEAM_ID_HERE/${{ secrets.IOS_TEAM_ID }}/g" ios/ExportOptions.plist
+                # 登录 Apple ID（用于自动管理证书）
+                if [ -n "${{ secrets.APPLE_ID }}" ] && [ -n "${{ secrets.APPLE_ID_PASSWORD }}" ]; then
+                  xcrun altool --store-password-in-keychain-item "CI_KEY" \
+                    -u "${{ secrets.APPLE_ID }}" -p "${{ secrets.APPLE_ID_PASSWORD }}" 2>/dev/null || true
+                fi
+                # 构建已签名的 IPA
+                flutter build ipa --release --export-options-plist ios/ExportOptions.plist
+                mkdir -p dist
+                cp build/ios/ipa/*.ipa dist/弈-${{ needs.version.outputs.tag }}-ios.ipa 2>/dev/null || \
+                  cp build/ios/archive/Runner.ipa dist/弈-${{ needs.version.outputs.tag }}-ios.ipa 2>/dev/null || true
+              else
+                # 无签名 → unsigned IPA
+                flutter build ios --release --no-codesign
+                mkdir -p dist/Payload
+                cp -r build/ios/iphoneos/Runner.app dist/Payload/
+                cd dist && zip -qr "弈-${{ needs.version.outputs.tag }}-ios.ipa" Payload/
+                rm -rf Payload
+              fi
+              # 确保 dist 目录有文件
+              ls -lh dist/
             upload: ios-arm64-${{ needs.version.outputs.tag }}
             path: dist/弈-${{ needs.version.outputs.tag }}-ios.ipa
-            pkg: |
-              # 无签名构建，产出 unsigned .ipa（可用 sideloadly / AltStore 安装）
-              mkdir -p dist/Payload
-              cp -r build/ios/iphoneos/Runner.app dist/Payload/
-              cd dist && zip -qr "弈-${{ needs.version.outputs.tag }}-ios.ipa" Payload/
-              rm -rf Payload
+            pkg: ''
     runs-on: macos-latest
     steps:
       - uses: actions/checkout@v5
