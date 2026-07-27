@@ -260,9 +260,6 @@ jobs:
           channel: stable
           cache: true
 
-      - name: Setup MSVC (Visual Studio)
-        uses: ilammy/msvc-dev-cmd@v1
-
       - name: Cache pub
         uses: actions/cache@v4
         with:
@@ -274,10 +271,16 @@ jobs:
         run: flutter pub get
 
       - name: Build Windows (release)
-        # msvc-dev-cmd 设置了完整 VS 环境，CMake 应自动检测
         run: |
-          echo "VisualStudioVersion=$Env:VisualStudioVersion"
-          cmake --help 2>&1 | Select-String "Visual Studio"
+          # Flutter 3.27 生成的 cmake config 硬编码 Visual Studio 16 2019，
+          # 但 windows-latest 只有 VS 18。构建前自动修正 generator。
+          $config = "windows\flutter\ephemeral\generated_config.cmake"
+          if (Test-Path $config) {
+            (Get-Content $config) -replace 'set\(CMAKE_GENERATOR "Visual Studio 16 2019"',
+              'set(CMAKE_GENERATOR "Visual Studio 17 2022"' | Set-Content $config
+            Write-Host "Patched generator:"
+            Select-String "CMAKE_GENERATOR" $config
+          }
           flutter build windows --release
 
       - name: Package with ZIP
