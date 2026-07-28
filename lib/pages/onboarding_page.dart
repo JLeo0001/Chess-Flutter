@@ -27,7 +27,7 @@ class _OnboardingPageState extends State<OnboardingPage> {
 
   static const _pages = [
     _OnboardData(Icons.sports_esports, '弈',
-        '多合一棋牌游戏\n五子棋 · 井字棋 · 中国象棋 · 国际象棋 · 围棋\n换牌扑克 · 德州扑克 · UNO · 斗地主'),
+        '多合一棋牌游戏\n五子棋 · 井字棋 · 中国象棋 · 国际象棋 · 围棋 · 中国跳棋\n换牌扑克 · 德州扑克 · UNO · 斗地主'),
     _OnboardData(Icons.smart_toy, '人机对战',
         '内置 AI 引擎\n从入门到精通，逐步挑战'),
     _OnboardData(Icons.group, '双人对弈',
