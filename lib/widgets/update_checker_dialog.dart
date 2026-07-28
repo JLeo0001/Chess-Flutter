@@ -157,13 +157,16 @@ class _UpdateCheckerDialogState extends State<UpdateCheckerDialog> {
           shrinkWrap: true, itemCount: _speedItems.length,
           itemBuilder: (_, i) {
             final item = _speedItems[i];
+            final shortUrl = item.url
+                .replaceAll('https://', '').replaceAll('http://', '')
+                .replaceAll('/', '');
             return Padding(padding: const EdgeInsets.symmetric(vertical: 2), child: Row(children: [
               Icon(item.tested ? (item.latencyMs != null ? Icons.check_circle_outline : Icons.error_outline) : Icons.schedule,
                   size: 14, color: item.tested ? (item.latencyMs != null ? Colors.green : Colors.red) : cs.onSurfaceVariant),
               const SizedBox(width: 6),
-              Text('节点 ${i + 1}',
-                  style: TextStyle(fontSize: 12, color: cs.onSurfaceVariant)),
-              const Spacer(),
+              Expanded(child: Text(shortUrl,
+                  style: TextStyle(fontSize: 11, color: cs.onSurfaceVariant),
+                  overflow: TextOverflow.ellipsis)),
               Text(item.latencyMs != null ? '${item.latencyMs}ms' : item.tested ? '超时' : '…',
                   style: TextStyle(fontSize: 11, fontWeight: FontWeight.w600,
                       color: item.latencyMs != null ? (item.latencyMs! < 500 ? Colors.green : item.latencyMs! < 1500 ? Colors.orange : Colors.red) : cs.onSurfaceVariant)),
