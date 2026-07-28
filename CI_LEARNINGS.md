@@ -26,3 +26,19 @@ $env:CMAKE_GENERATOR_INSTANCE = $vsPath
 ```
 
 The workflow also prints `cmake --help` Visual Studio generator lines before wrapping, so future CI logs show exactly which generators the runner CMake supports.
+
+## Windows: Flutter desktop artifact path
+
+Flutter 3.27 Windows release output is under:
+
+```text
+build/windows/x64/runner/Release
+```
+
+not the older/simplified path:
+
+```text
+build/windows/runner/Release
+```
+
+The workflow should package `build/windows/x64/runner/Release/*`, with a fallback to the older path and diagnostics that list discovered `Release` directories if neither exists.

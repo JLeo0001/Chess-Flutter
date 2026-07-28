@@ -435,7 +435,20 @@ jobs:
 
       - name: Package with ZIP
         run: |
-          Compress-Archive -Path build/windows/runner/Release/* -DestinationPath Chess-Flutter-${{ needs.version.outputs.tag }}-windows-x64.zip
+          # Flutter 3.27 writes Windows desktop output under build/windows/x64/runner/Release.
+          # Keep a fallback for older Flutter layouts and print discovered Release dirs if neither exists.
+          $releaseDir = "build/windows/x64/runner/Release"
+          if (-not (Test-Path $releaseDir)) {
+            $releaseDir = "build/windows/runner/Release"
+          }
+          if (-not (Test-Path $releaseDir)) {
+            Write-Host "Known build/windows Release directories:"
+            Get-ChildItem -Path build/windows -Recurse -Directory -Filter Release -ErrorAction SilentlyContinue |
+              ForEach-Object { Write-Host $_.FullName }
+            throw "Windows release output directory not found"
+          }
+          Write-Host "Packaging Windows release directory: $releaseDir"
+          Compress-Archive -Path "$releaseDir/*" -DestinationPath Chess-Flutter-${{ needs.version.outputs.tag }}-windows-x64.zip
         shell: pwsh
 
       - name: Upload artifact
