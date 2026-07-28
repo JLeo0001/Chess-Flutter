@@ -384,16 +384,20 @@ jobs:
           # Flutter 3.27 hardcodes -G "Visual Studio 16 2019".
           # The job is pinned to windows-2022; rewrite Flutter's generator
           # argument to the installed Visual Studio generator (normally VS 2022).
-          $vsPath = & "${env:ProgramFiles(x86)}\Microsoft Visual Studio\Installer\vswhere.exe" `
-            -latest -property installationPath
+          $vswhere = "${env:ProgramFiles(x86)}\Microsoft Visual Studio\Installer\vswhere.exe"
+          $vsPath = & $vswhere -latest -property installationPath
+          $vsVersion = & $vswhere -latest -property installationVersion
           Write-Host "VS installed at: $vsPath"
+          Write-Host "VS installationVersion: $vsVersion"
 
-          $vsMajor = [int](Split-Path (Split-Path $vsPath -Parent) -Leaf)
+          # Use the Visual Studio product version (17.x for VS 2022), not the
+          # year folder in the installation path (for example ...\2022\Enterprise).
+          $vsMajor = [int]($vsVersion.Split('.')[0])
           switch ($vsMajor) {
             18 { $cmakeGenerator = "Visual Studio 18 2026" }
             17 { $cmakeGenerator = "Visual Studio 17 2022" }
             16 { $cmakeGenerator = "Visual Studio 16 2019" }
-            default { throw "Unsupported Visual Studio major version: $vsMajor ($vsPath)" }
+            default { throw "Unsupported Visual Studio version: $vsVersion ($vsPath)" }
           }
           Write-Host "Using CMake generator: $cmakeGenerator"
 

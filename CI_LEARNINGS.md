@@ -9,15 +9,17 @@ Setting only `CMAKE_GENERATOR_INSTANCE` fails with:
 
 Renaming `cmake.exe` and replacing Flutter's generator with a fixed `Visual Studio 17 2022` is brittle if `windows-latest` moves ahead to a runner image whose Visual Studio/CMake combination is not supported by Flutter 3.27.
 
-**Fix:** Pin the Windows job to `windows-2022`, where Visual Studio 2022 is available, then detect the installed Visual Studio major version from the `vswhere` installation path, map it to the matching CMake generator, set both CMake environment variables, and use a `cmake.bat` wrapper to rewrite Flutter's hardcoded `Visual Studio 16 2019` argument:
+**Fix:** Pin the Windows job to `windows-2022`, where Visual Studio 2022 is available, then detect the installed Visual Studio product major from `vswhere -property installationVersion` (17.x for VS 2022), map it to the matching CMake generator, set both CMake environment variables, and use a `cmake.bat` wrapper to rewrite Flutter's hardcoded `Visual Studio 16 2019` argument. Do **not** parse the installation path folder, because VS 2022 installs under a `2022` year folder, not a `17` major-version folder:
 
 ```powershell
-$vsMajor = [int](Split-Path (Split-Path $vsPath -Parent) -Leaf)
+$vsPath = & $vswhere -latest -property installationPath
+$vsVersion = & $vswhere -latest -property installationVersion
+$vsMajor = [int]($vsVersion.Split('.')[0])
 switch ($vsMajor) {
   18 { $cmakeGenerator = "Visual Studio 18 2026" }
   17 { $cmakeGenerator = "Visual Studio 17 2022" }
   16 { $cmakeGenerator = "Visual Studio 16 2019" }
-  default { throw "Unsupported Visual Studio major version: $vsMajor ($vsPath)" }
+  default { throw "Unsupported Visual Studio version: $vsVersion ($vsPath)" }
 }
 $env:CMAKE_GENERATOR = $cmakeGenerator
 $env:CMAKE_GENERATOR_INSTANCE = $vsPath
