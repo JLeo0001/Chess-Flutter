@@ -20,6 +20,12 @@ concurrency:
 env:
   FLUTTER_VERSION: '3.27.x'
 
+# ── GitHub Pages 部署权限 ──
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
 # ── 共享步骤：跨平台一致的 Flutter 初始化 ──
 #
 # 使用 YAML 锚点避免重复，但注意 composite 级别的锚点在不同 job 间不共享
@@ -196,6 +202,11 @@ jobs:
 
       - name: Build Web
         run: flutter build web --release --no-tree-shake-icons
+
+      - name: Upload Pages artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: build/web
 
       - name: Package ZIP
         run: |
@@ -544,3 +555,20 @@ jobs:
           path: ${{ matrix.target.ipa_path }}
           compression-level: 0
           retention-days: 30
+
+  ##############################################################################
+  #  GitHub Pages Deploy  (仅 main 分支推送触发)
+  ##############################################################################
+  deploy:
+    name: 🌐 GitHub Pages
+    needs: [web]
+    # 只在 main 分支推送时部署，PR 和 tag 推送不部署
+    if: github.ref == 'refs/heads/main' && github.event_name != 'pull_request'
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4
