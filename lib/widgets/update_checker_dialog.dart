@@ -1,6 +1,6 @@
 import 'dart:io';
 import 'package:flutter/material.dart';
-import 'package:path_provider/path_provider.dart';
+import 'package:install_plugin/install_plugin.dart';
 import 'package:url_launcher/url_launcher.dart';
 import '../services/update_service.dart';
 
@@ -107,16 +107,16 @@ class _UpdateCheckerDialogState extends State<UpdateCheckerDialog> {
 
   Future<void> _installApk(String path) async {
     try {
-      final downloadsDir = await getExternalStorageDirectory() ?? await getApplicationDocumentsDirectory();
-      final destFile = File('${downloadsDir.path}/${_assetName ?? 'update.apk'}');
-      if (destFile.path != path) await File(path).copy(destFile.path);
-      await launchUrl(Uri.file(destFile.path), mode: LaunchMode.externalApplication);
+      await InstallPlugin.installApk(path);
       if (mounted) Navigator.of(context).pop();
     } catch (_) {
+      // install_plugin 内部已处理 FileProvider，失败则尝试 url_launcher
       try {
         await launchUrl(Uri.file(path), mode: LaunchMode.externalApplication);
         if (mounted) Navigator.of(context).pop();
-      } catch (_) { if (mounted) setState(() => _downloadError = true); }
+      } catch (_) {
+        if (mounted) setState(() => _downloadError = true);
+      }
     }
   }
 
