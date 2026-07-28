@@ -95,6 +95,9 @@ class ModePage extends StatelessWidget {
                         arguments: {'players': [2, 3, 4, 6][entry.$1]}),
                   ),
                 ),
+              const SizedBox(height: 8),
+              _card(context, '游戏教程', '📖 学习规则与技巧',
+                  () => Navigator.pushNamed(context, '/tutorial', arguments: 'chinese_checkers')),
             ],
           ] else ...[
             _card(context, '双人对弈', '👥 两位玩家轮流操作',
