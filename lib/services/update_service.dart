@@ -7,9 +7,9 @@ class UpdateService {
   static const _currentVersion = '1.0.2';
   static const _repoOwner = 'JLeo0001';
   static const _repoName = 'Chess-Flutter';
+  static const _directUrl = 'https://github.com/';
 
   static const proxyUrls = [
-    'https://github.com/',
     'https://gh-proxy.com/',
     'https://ghproxy.net/',
     'https://ghproxy.homeboyc.cn/',
@@ -34,23 +34,17 @@ class UpdateService {
     'https://gh.jasonzeng.dev/',
   ];
 
-  // ── 后台静默检查（不显示测速UI）──
-
   static Future<UpdateCheckResult?> silentCheck() async {
-    // 测速
-    final fastest = await _findFastestProxy();
-    if (fastest == null) return null;
-
-    // 查版本
     final release = await fetchLatestRelease();
     if (release == null) return null;
 
     final hasUpdate = isNewer(_currentVersion, release.version);
     if (!hasUpdate) return null;
 
+    final fastest = await _findFastestProxy();
     final asset = findPlatformAsset(release.assets);
     return UpdateCheckResult(
-      fastestProxy: fastest,
+      fastestProxy: fastest ?? _directUrl,
       version: release.version,
       assetName: asset?.name,
       downloadUrl: asset?.downloadUrl,
@@ -138,7 +132,7 @@ class UpdateService {
     required String saveName,
     required void Function(double progress) onProgress,
   }) async {
-    final bool isDirect = proxyBase.contains('github.com/');
+    final bool isDirect = proxyBase == _directUrl;
     final downloadUrl = isDirect
         ? directUrl
         : '${proxyBase.endsWith('/') ? proxyBase : '$proxyBase/'}${Uri.parse(directUrl).host}${Uri.parse(directUrl).path}';
@@ -161,11 +155,14 @@ class UpdateService {
     } catch (_) { return null; }
   }
 
-  // ── 手动模式：带测速进度的完整检查 ──
-
   static Future<UpdateCheckResult?> fullCheck({
     void Function(int tested, int total, String url, int? latency)? onProgress,
   }) async {
+    // 先查版本（直接调 GitHub API，不走代理）
+    final release = await fetchLatestRelease();
+    if (release == null) return null;
+
+    // 测速找最快代理（github.com 兜底）
     String? fastestUrl;
     int? fastestLatency;
     final total = proxyUrls.length;
@@ -179,16 +176,12 @@ class UpdateService {
         fastestUrl = url;
       }
     }
-    if (fastestUrl == null) return null;
-
-    final release = await fetchLatestRelease();
-    if (release == null) return null;
 
     final hasUpdate = isNewer(_currentVersion, release.version);
     final asset = hasUpdate ? findPlatformAsset(release.assets) : null;
 
     return UpdateCheckResult(
-      fastestProxy: fastestUrl,
+      fastestProxy: fastestUrl ?? _directUrl,
       fastestLatency: fastestLatency,
       version: release.version,
       isLatest: !hasUpdate,
