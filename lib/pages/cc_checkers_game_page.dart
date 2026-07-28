@@ -26,6 +26,9 @@ class _ChineseCheckersGamePageState extends State<ChineseCheckersGamePage> {
 
   String _label = '';
   String _status = '';
+  Timer? _lotteryTimer;
+  Timer? _transitionTimer;
+  Timer? _aiTimer;
 
   @override
   void initState() {
@@ -40,6 +43,14 @@ class _ChineseCheckersGamePageState extends State<ChineseCheckersGamePage> {
     WidgetsBinding.instance.addPostFrameCallback((_) => _startLottery());
   }
 
+  @override
+  void dispose() {
+    _lotteryTimer?.cancel();
+    _transitionTimer?.cancel();
+    _aiTimer?.cancel();
+    super.dispose();
+  }
+
   void _startLottery() {
     setState(() {
       _state = 1;
@@ -51,7 +62,8 @@ class _ChineseCheckersGamePageState extends State<ChineseCheckersGamePage> {
   }
 
   void _animateLottery() {
-    Timer.periodic(const Duration(milliseconds: 50), (t) {
+    _lotteryTimer?.cancel();
+    _lotteryTimer = Timer.periodic(const Duration(milliseconds: 50), (t) {
       if (_lotteryCnt >= _ltTotal) {
         t.cancel();
         _finishLottery();
@@ -78,7 +90,7 @@ class _ChineseCheckersGamePageState extends State<ChineseCheckersGamePage> {
       _label = '你（${_colorName(_game.playerColor(_humanPlayer))}）';
     });
 
-    Timer(const Duration(milliseconds: 400), _startPlaying);
+    _transitionTimer = Timer(const Duration(milliseconds: 400), _startPlaying);
   }
 
   void _startPlaying() {
@@ -95,7 +107,8 @@ class _ChineseCheckersGamePageState extends State<ChineseCheckersGamePage> {
   void _scheduleAI() {
     _aiThinking = true;
     _updateUI();
-    Timer(const Duration(milliseconds: 400), _doAI);
+    _aiTimer?.cancel();
+    _aiTimer = Timer(const Duration(milliseconds: 400), _doAI);
   }
 
   void _doAI() {
@@ -193,7 +206,8 @@ class _ChineseCheckersGamePageState extends State<ChineseCheckersGamePage> {
 
   String get _resultDetail {
     final w = _game.winner;
-    return '${_colorName(w == _humanPlayer ? _game.playerColor(w) : _game.playerColor(w))}方率先占领目标营地';
+    if (w < 1 || w > widget.numPlayers) return '';
+    return '${_colorName(_game.playerColor(w))}方率先占领目标营地';
   }
 
   @override
