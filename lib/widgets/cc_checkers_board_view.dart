@@ -227,7 +227,7 @@ class _CCBoardPainter extends CustomPainter {
         py = fy + (py - fy) * t;
       }
 
-      final color = _playerColor(owner, night);
+      final color = _playerColor(game.playerColor(owner), night);
       final isCurrent = owner == game.currentPlayer && !game.isGameOver;
 
       // 阴影
