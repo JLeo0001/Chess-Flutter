@@ -12,24 +12,15 @@ class UpdateService {
   static const proxyUrls = [
     'https://gh-proxy.com/',
     'https://ghproxy.net/',
-    'https://ghproxy.homeboyc.cn/',
-    'https://moeyy.cn/gh-proxy/',
-    'https://github.akams.cn/',
     'https://gh.zwy.one/',
     'https://gh.llkk.cc/',
     'https://ghfile.geekertao.top/',
     'https://ghproxy.cxkpro.top/',
-    'https://git.yylx.win/',
-    'https://gh.h233.eu.org/',
     'https://cdn.crashmc.com/',
     'https://cors.isteed.cc/',
     'https://fastgit.cc/',
     'https://ghfast.top/',
     'https://gh.monlor.com/',
-    'https://mirror.ghproxy.com/',
-    'https://gh.con.sh/',
-    'https://gh.api.99988866.xyz/',
-    'https://gitdl.cn/',
   ];
 
   static String? _currentVersion;
