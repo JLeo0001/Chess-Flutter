@@ -201,7 +201,7 @@ jobs:
         run: flutter pub get
 
       - name: Build Web
-        run: flutter build web --release --no-tree-shake-icons
+        run: flutter build web --release --no-tree-shake-icons --base-href /Chess-Flutter/
 
       - name: Upload Pages artifact
         uses: actions/upload-pages-artifact@v3
