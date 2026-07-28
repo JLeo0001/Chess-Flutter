@@ -13,13 +13,10 @@ class UpdateService {
     'https://gh-proxy.com/',
     'https://ghproxy.net/',
     'https://ghproxy.homeboyc.cn/',
-    'https://ghp.ci/',
     'https://moeyy.cn/gh-proxy/',
     'https://github.akams.cn/',
     'https://gh.zwy.one/',
-    'https://raw.ihtw.moe/',
     'https://gh.llkk.cc/',
-    'https://gh.xxooo.cf/',
     'https://ghfile.geekertao.top/',
     'https://ghproxy.cxkpro.top/',
     'https://git.yylx.win/',
@@ -29,9 +26,6 @@ class UpdateService {
     'https://fastgit.cc/',
     'https://ghfast.top/',
     'https://gh.monlor.com/',
-    'https://mirror.ghproxy.com/',
-    'https://ghproxy.it/',
-    'https://gh.jasonzeng.dev/',
   ];
 
   static Future<UpdateCheckResult?> silentCheck() async {
