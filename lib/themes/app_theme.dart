@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:google_fonts/google_fonts.dart';
 
 /// Material Design 3 主题配置
 class AppTheme {
@@ -90,16 +89,14 @@ class AppTheme {
         behavior: SnackBarBehavior.floating,
       ),
 
-      textTheme: GoogleFonts.notoSansSCTextTheme(
-        TextTheme(
-          headlineLarge: TextStyle(fontSize: 32, fontWeight: FontWeight.bold, color: cs.onSurface),
-          headlineMedium: TextStyle(fontSize: 28, fontWeight: FontWeight.bold, color: cs.onSurface),
-          titleLarge: TextStyle(fontSize: 22, fontWeight: FontWeight.w600, color: cs.onSurface),
-          titleMedium: TextStyle(fontSize: 16, fontWeight: FontWeight.w500, color: cs.onSurfaceVariant),
-          bodyLarge: TextStyle(fontSize: 16, color: cs.onSurface),
-          bodyMedium: TextStyle(fontSize: 14, color: cs.onSurfaceVariant),
-          labelSmall: TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: cs.primary),
-        ),
+      textTheme: TextTheme(
+        headlineLarge: TextStyle(fontSize: 32, fontWeight: FontWeight.bold, color: cs.onSurface),
+        headlineMedium: TextStyle(fontSize: 28, fontWeight: FontWeight.bold, color: cs.onSurface),
+        titleLarge: TextStyle(fontSize: 22, fontWeight: FontWeight.w600, color: cs.onSurface),
+        titleMedium: TextStyle(fontSize: 16, fontWeight: FontWeight.w500, color: cs.onSurfaceVariant),
+        bodyLarge: TextStyle(fontSize: 16, color: cs.onSurface),
+        bodyMedium: TextStyle(fontSize: 14, color: cs.onSurfaceVariant),
+        labelSmall: TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: cs.primary),
       ),
     );
   }
