@@ -1,13 +1,15 @@
-import 'dart:async';
 import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:url_launcher/url_launcher.dart';
 import '../services/update_service.dart';
 
+/// mode='full' 从关于页面手动触发，显示测速过程
+/// mode='result' 后台静默测速完成，直接显示更新提示
 class UpdateCheckerDialog extends StatefulWidget {
-  final bool autoCheck;
-  const UpdateCheckerDialog({super.key, this.autoCheck = false});
+  final String mode;
+  final UpdateCheckResult? result;
+  const UpdateCheckerDialog({super.key, this.mode = 'full', this.result});
   @override
   State<UpdateCheckerDialog> createState() => _UpdateCheckerDialogState();
 }
@@ -25,25 +27,32 @@ class _UpdateCheckerDialogState extends State<UpdateCheckerDialog> {
   double _downloadProgress = 0;
   String? _downloadedPath;
   bool _downloadError = false;
+  bool _checkingFailed = false;
 
   @override
   void initState() {
     super.initState();
-    _speedItems.addAll(UpdateService.proxyUrls.map((u) => _SpeedItem(u)));
-    WidgetsBinding.instance.addPostFrameCallback((_) => _start());
-  }
-
-  Future<void> _start() async {
-    await _speedTest();
-    await _checkVersion();
-    if (widget.autoCheck && _isLatest) {
-      if (mounted) Navigator.of(context).pop();
-      return;
+    if (widget.mode == 'result' && widget.result != null) {
+      _applyResult(widget.result!);
+    } else {
+      _speedItems.addAll(UpdateService.proxyUrls.map((u) => _SpeedItem(u)));
+      WidgetsBinding.instance.addPostFrameCallback((_) => _startFullCheck());
     }
   }
 
-  Future<void> _speedTest() async {
-    final results = await UpdateService.speedTest(
+  void _applyResult(UpdateCheckResult r) {
+    _fastestProxy = r.fastestProxy;
+    _fastestLatency = r.fastestLatency;
+    _latestVersion = r.version;
+    _isLatest = r.isLatest;
+    _downloadUrl = r.downloadUrl;
+    _assetName = r.assetName;
+    _step = 2;
+    if (mounted) setState(() {});
+  }
+
+  Future<void> _startFullCheck() async {
+    final result = await UpdateService.fullCheck(
       onProgress: (tested, total, url, latency) {
         if (!mounted) return;
         setState(() {
@@ -62,23 +71,12 @@ class _UpdateCheckerDialogState extends State<UpdateCheckerDialog> {
         });
       },
     );
-    final fastest = results.firstWhere((r) => r.latencyMs != null, orElse: () => results.first);
-    _fastestProxy = fastest.url;
-    _fastestLatency = fastest.latencyMs;
-    if (mounted) setState(() {});
-  }
-
-  Future<void> _checkVersion() async {
-    setState(() => _step = 1);
-    final release = await UpdateService.fetchLatestRelease();
-    if (release == null) { _isLatest = true; setState(() => _step = 2); return; }
-    _latestVersion = release.version;
-    _isLatest = !UpdateService.isNewer(UpdateService.currentVersion, release.version);
-    if (!_isLatest) {
-      final asset = UpdateService.findPlatformAsset(release.assets);
-      if (asset != null) { _downloadUrl = asset.downloadUrl; _assetName = asset.name; }
+    if (!mounted) return;
+    if (result == null) {
+      setState(() { _step = 2; _checkingFailed = true; });
+      return;
     }
-    if (mounted) setState(() => _step = 2);
+    _applyResult(result);
   }
 
   Future<void> _startDownload() async {
@@ -86,7 +84,7 @@ class _UpdateCheckerDialogState extends State<UpdateCheckerDialog> {
     setState(() { _step = 3; _downloadProgress = 0; });
     final path = await UpdateService.downloadWithProgress(
       directUrl: _downloadUrl!, proxyBase: _fastestProxy!,
-      saveName: _assetName ?? 'update',
+      saveName: _assetName ?? '更新包',
       onProgress: (p) { if (mounted) setState(() => _downloadProgress = p); },
     );
     if (!mounted) return;
@@ -113,20 +111,36 @@ class _UpdateCheckerDialogState extends State<UpdateCheckerDialog> {
     }
   }
 
+  String get _title {
+    if (_step == 0) return '测速中…';
+    if (_checkingFailed) return '检查失败';
+    if (_step == 3) return '下载中';
+    if (_isLatest) return '已是最新版本';
+    return '发现新版本';
+  }
+
   @override
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
     return AlertDialog(
-      title: Text(_step == 0 ? 'Checking mirrors...' : _step == 1 ? 'Checking for updates' : _step == 3 ? 'Downloading' : _isLatest ? 'Up to date' : 'New version available', style: TextStyle(color: cs.onSurface)),
+      title: Text(_title, style: TextStyle(color: cs.onSurface)),
       content: SizedBox(width: double.maxFinite, child: _buildContent(cs)),
       actions: _buildActions(cs),
     );
   }
 
   Widget _buildContent(ColorScheme cs) {
+    if (_checkingFailed) {
+      return Column(mainAxisSize: MainAxisSize.min, children: [
+        const Icon(Icons.cloud_off, size: 48, color: Colors.orange),
+        const SizedBox(height: 12),
+        Text('无法连接到更新服务器', style: TextStyle(color: cs.onSurface)),
+        const SizedBox(height: 4),
+        Text('请检查网络后重试', style: TextStyle(fontSize: 13, color: cs.onSurfaceVariant)),
+      ]);
+    }
     switch (_step) {
       case 0: return _buildSpeedTest(cs);
-      case 1: return _buildChecking(cs);
       case 2: return _buildResult(cs);
       case 3: return _buildDownloadProgress(cs);
       default: return const SizedBox.shrink();
@@ -137,7 +151,8 @@ class _UpdateCheckerDialogState extends State<UpdateCheckerDialog> {
     return Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.start, children: [
       LinearProgressIndicator(value: _speedItems.isNotEmpty ? _testedCount / _speedItems.length : null),
       const SizedBox(height: 8),
-      Text('Tested $_testedCount / ${_speedItems.length} mirrors', style: TextStyle(fontSize: 12, color: cs.onSurfaceVariant)),
+      Text('已测 $_testedCount / ${_speedItems.length} 个镜像',
+          style: TextStyle(fontSize: 12, color: cs.onSurfaceVariant)),
       const SizedBox(height: 12),
       Flexible(
         child: Container(constraints: const BoxConstraints(maxHeight: 200), child: ListView.builder(
@@ -146,10 +161,13 @@ class _UpdateCheckerDialogState extends State<UpdateCheckerDialog> {
             final item = _speedItems[i];
             final displayUrl = item.url.replaceAll('https://', '').replaceAll('http://', '');
             return Padding(padding: const EdgeInsets.symmetric(vertical: 2), child: Row(children: [
-              Icon(item.tested ? (item.latencyMs != null ? Icons.check_circle_outline : Icons.error_outline) : Icons.schedule, size: 14, color: item.tested ? (item.latencyMs != null ? Colors.green : Colors.red) : cs.onSurfaceVariant),
+              Icon(item.tested ? (item.latencyMs != null ? Icons.check_circle_outline : Icons.error_outline) : Icons.schedule,
+                  size: 14, color: item.tested ? (item.latencyMs != null ? Colors.green : Colors.red) : cs.onSurfaceVariant),
               const SizedBox(width: 6),
               Expanded(child: Text(displayUrl, style: TextStyle(fontSize: 11, color: cs.onSurfaceVariant), overflow: TextOverflow.ellipsis)),
-              Text(item.latencyMs != null ? '${item.latencyMs}ms' : item.tested ? '-' : '...', style: TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: item.latencyMs != null ? (item.latencyMs! < 500 ? Colors.green : item.latencyMs! < 1500 ? Colors.orange : Colors.red) : cs.onSurfaceVariant)),
+              Text(item.latencyMs != null ? '${item.latencyMs}ms' : item.tested ? '超时' : '…',
+                  style: TextStyle(fontSize: 11, fontWeight: FontWeight.w600,
+                      color: item.latencyMs != null ? (item.latencyMs! < 500 ? Colors.green : item.latencyMs! < 1500 ? Colors.orange : Colors.red) : cs.onSurfaceVariant)),
             ]));
           },
         )),
@@ -157,34 +175,30 @@ class _UpdateCheckerDialogState extends State<UpdateCheckerDialog> {
     ]);
   }
 
-  Widget _buildChecking(ColorScheme cs) {
-    return Column(mainAxisSize: MainAxisSize.min, children: [
-      const CircularProgressIndicator(), const SizedBox(height: 16),
-      Text('Querying latest release...', style: TextStyle(color: cs.onSurfaceVariant)),
-      if (_fastestProxy != null) ...[
-        const SizedBox(height: 8),
-        Text('Fastest: ${_fastestProxy!.replaceAll('https://', '')}', style: TextStyle(fontSize: 12, color: cs.onSurfaceVariant)),
-      ],
-    ]);
-  }
-
   Widget _buildResult(ColorScheme cs) {
     return Column(mainAxisSize: MainAxisSize.min, children: [
       if (_fastestProxy != null && _fastestLatency != null) ...[
-        Text('Fastest mirror: ${_fastestProxy!.replaceAll('https://', '')} (${_fastestLatency}ms)', style: TextStyle(fontSize: 12, color: cs.primary)),
+        Text('最快镜像: ${_fastestProxy!.replaceAll('https://', '')} (${_fastestLatency}ms)',
+            style: TextStyle(fontSize: 12, color: cs.primary)),
         const SizedBox(height: 16),
       ],
       if (_isLatest) ...[
-        const Icon(Icons.check_circle, size: 48, color: Colors.green), const SizedBox(height: 12),
-        Text('Current ${UpdateService.currentVersion} is the latest', style: TextStyle(color: cs.onSurface)),
+        const Icon(Icons.check_circle, size: 48, color: Colors.green),
+        const SizedBox(height: 12),
+        Text('当前版本 ${UpdateService.currentVersion} 已是最新',
+            style: TextStyle(color: cs.onSurface)),
       ] else ...[
-        Icon(Icons.system_update, size: 48, color: cs.primary), const SizedBox(height: 12),
-        Text('v$_latestVersion available', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: cs.onSurface)),
+        Icon(Icons.system_update, size: 48, color: cs.primary),
+        const SizedBox(height: 12),
+        Text('发现新版本 v$_latestVersion',
+            style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: cs.onSurface)),
         const SizedBox(height: 4),
-        Text('Current: ${UpdateService.currentVersion}', style: TextStyle(fontSize: 13, color: cs.onSurfaceVariant)),
+        Text('当前版本: ${UpdateService.currentVersion}',
+            style: TextStyle(fontSize: 13, color: cs.onSurfaceVariant)),
         if (_assetName != null) ...[
           const SizedBox(height: 8),
-          Text('Package: $_assetName', style: TextStyle(fontSize: 12, color: cs.onSurfaceVariant)),
+          Text('安装包: $_assetName',
+              style: TextStyle(fontSize: 12, color: cs.onSurfaceVariant)),
         ],
       ],
     ]);
@@ -194,17 +208,20 @@ class _UpdateCheckerDialogState extends State<UpdateCheckerDialog> {
     final pct = (_downloadProgress * 100).toStringAsFixed(0);
     return Column(mainAxisSize: MainAxisSize.min, children: [
       if (_downloadedPath != null && !_downloadError) ...[
-        const Icon(Icons.check_circle, size: 48, color: Colors.green), const SizedBox(height: 12),
-        Text('Download complete!', style: TextStyle(color: cs.onSurface)),
+        const Icon(Icons.check_circle, size: 48, color: Colors.green),
+        const SizedBox(height: 12),
+        Text('下载完成！', style: TextStyle(color: cs.onSurface)),
         if (!Platform.isAndroid) ...[
           const SizedBox(height: 4),
-          Text('Saved to temp directory', style: TextStyle(fontSize: 12, color: cs.onSurfaceVariant)),
+          Text('文件已保存到临时目录', style: TextStyle(fontSize: 12, color: cs.onSurfaceVariant)),
         ],
       ] else if (_downloadError) ...[
-        const Icon(Icons.error, size: 48, color: Colors.red), const SizedBox(height: 12),
-        Text('Download failed', style: TextStyle(color: cs.onSurface)),
+        const Icon(Icons.error, size: 48, color: Colors.red),
+        const SizedBox(height: 12),
+        Text('下载失败，请稍后重试', style: TextStyle(color: cs.onSurface)),
       ] else ...[
-        SizedBox(width: 48, height: 48, child: CircularProgressIndicator(value: _downloadProgress)),
+        SizedBox(width: 48, height: 48,
+            child: CircularProgressIndicator(value: _downloadProgress)),
         const SizedBox(height: 16),
         Text('$pct%', style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: cs.onSurface)),
         const SizedBox(height: 4),
@@ -217,11 +234,11 @@ class _UpdateCheckerDialogState extends State<UpdateCheckerDialog> {
     if (_step == 3 && _downloadedPath == null && !_downloadError) return [];
     if (_step == 2 && !_isLatest && _downloadUrl != null) {
       return [
-        TextButton(onPressed: () => Navigator.of(context).pop(), child: const Text('Later')),
-        FilledButton(onPressed: _startDownload, child: const Text('Download')),
+        TextButton(onPressed: () => Navigator.of(context).pop(), child: const Text('以后再说')),
+        FilledButton(onPressed: _startDownload, child: const Text('立即下载')),
       ];
     }
-    return [TextButton(onPressed: () => Navigator.of(context).pop(), child: Text(_isLatest || _step == 3 ? 'OK' : 'Cancel'))];
+    return [TextButton(onPressed: () => Navigator.of(context).pop(), child: const Text('确定'))];
   }
 }
 

@@ -14,7 +14,6 @@ class UpdateService {
     'https://ghproxy.homeboyc.cn/',
     'https://ghp.ci/',
     'https://moeyy.cn/gh-proxy/',
-    'http://toolwa.com/github/',
     'https://github.akams.cn/',
     'https://gh.zwy.one/',
     'https://raw.ihtw.moe/',
@@ -34,19 +33,40 @@ class UpdateService {
     'https://gh.jasonzeng.dev/',
   ];
 
-  static Future<List<ProxyResult>> speedTest({
-    void Function(int tested, int total, String url, int? latency)? onProgress,
-  }) async {
-    final results = <ProxyResult>[];
-    for (int i = 0; i < proxyUrls.length; i++) {
-      final url = proxyUrls[i];
-      onProgress?.call(i, proxyUrls.length, url, null);
-      final latency = await _pingUrl(url);
-      results.add(ProxyResult(url, latency));
-      onProgress?.call(i + 1, proxyUrls.length, url, latency);
+  // ── 后台静默检查（不显示测速UI）──
+
+  static Future<UpdateCheckResult?> silentCheck() async {
+    // 测速
+    final fastest = await _findFastestProxy();
+    if (fastest == null) return null;
+
+    // 查版本
+    final release = await fetchLatestRelease();
+    if (release == null) return null;
+
+    final hasUpdate = isNewer(_currentVersion, release.version);
+    if (!hasUpdate) return null;
+
+    final asset = findPlatformAsset(release.assets);
+    return UpdateCheckResult(
+      fastestProxy: fastest,
+      version: release.version,
+      assetName: asset?.name,
+      downloadUrl: asset?.downloadUrl,
+    );
+  }
+
+  static Future<String?> _findFastestProxy() async {
+    String? bestUrl;
+    int? bestTime;
+    for (final url in proxyUrls) {
+      final t = await _pingUrl(url);
+      if (t != null && (bestTime == null || t < bestTime)) {
+        bestTime = t;
+        bestUrl = url;
+      }
     }
-    results.sort((a, b) => (a.latencyMs ?? 99999).compareTo(b.latencyMs ?? 99999));
-    return results;
+    return bestUrl;
   }
 
   static Future<int?> _pingUrl(String url) async {
@@ -73,9 +93,7 @@ class UpdateService {
         return AssetInfo(name: m['name'] as String, downloadUrl: m['browser_download_url'] as String);
       }).toList() ?? [];
       return ReleaseInfo(version, tagName, assets);
-    } catch (_) {
-      return null;
-    }
+    } catch (_) { return null; }
   }
 
   static bool isNewer(String current, String latest) {
@@ -138,10 +156,61 @@ class UpdateService {
       }
       await sink.close();
       return file.path;
-    } catch (_) {
-      return null;
-    }
+    } catch (_) { return null; }
   }
+
+  // ── 手动模式：带测速进度的完整检查 ──
+
+  static Future<UpdateCheckResult?> fullCheck({
+    void Function(int tested, int total, String url, int? latency)? onProgress,
+  }) async {
+    String? fastestUrl;
+    int? fastestLatency;
+    final total = proxyUrls.length;
+    for (int i = 0; i < total; i++) {
+      final url = proxyUrls[i];
+      onProgress?.call(i, total, url, null);
+      final t = await _pingUrl(url);
+      onProgress?.call(i + 1, total, url, t);
+      if (t != null && (fastestLatency == null || t < fastestLatency)) {
+        fastestLatency = t;
+        fastestUrl = url;
+      }
+    }
+    if (fastestUrl == null) return null;
+
+    final release = await fetchLatestRelease();
+    if (release == null) return null;
+
+    final hasUpdate = isNewer(_currentVersion, release.version);
+    final asset = hasUpdate ? findPlatformAsset(release.assets) : null;
+
+    return UpdateCheckResult(
+      fastestProxy: fastestUrl,
+      fastestLatency: fastestLatency,
+      version: release.version,
+      isLatest: !hasUpdate,
+      assetName: asset?.name,
+      downloadUrl: asset?.downloadUrl,
+    );
+  }
+}
+
+class UpdateCheckResult {
+  final String fastestProxy;
+  final int? fastestLatency;
+  final String version;
+  final bool isLatest;
+  final String? assetName;
+  final String? downloadUrl;
+  UpdateCheckResult({
+    required this.fastestProxy,
+    this.fastestLatency,
+    required this.version,
+    this.isLatest = false,
+    this.assetName,
+    this.downloadUrl,
+  });
 }
 
 class ProxyResult {

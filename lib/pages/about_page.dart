@@ -82,7 +82,7 @@ class AboutPage extends StatelessWidget {
               onTap: () => showDialog(
                 context: context,
                 barrierDismissible: false,
-                builder: (_) => const UpdateCheckerDialog(),
+                builder: (_) => const UpdateCheckerDialog(mode: 'full'),
               ),
             ),
           ),
