@@ -22,7 +22,7 @@ class _ChineseCheckersGamePageState extends State<ChineseCheckersGamePage> {
 
   int _state = 0; // 0=waiting, 1=lottery, 2=playing, 3=over
   int _lotteryCnt = 0;
-  static const _ltTotal = 16;
+  static const _ltTotal = 12;
 
   String _label = '';
   String _status = '';
@@ -82,10 +82,8 @@ class _ChineseCheckersGamePageState extends State<ChineseCheckersGamePage> {
   }
 
   void _startPlaying() {
-    setState(() {
-      _state = 2;
-      _updateUI();
-    });
+    _state = 2;
+    _updateUI();
     if (_isAITurn()) _scheduleAI();
   }
 
