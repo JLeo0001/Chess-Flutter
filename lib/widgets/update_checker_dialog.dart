@@ -19,7 +19,6 @@ class _UpdateCheckerDialogState extends State<UpdateCheckerDialog> {
   final List<_SpeedItem> _speedItems = [];
   int _testedCount = 0;
   String? _fastestProxy;
-  int? _fastestLatency;
   bool _isLatest = true;
   String? _latestVersion;
   String? _downloadUrl;
@@ -42,7 +41,6 @@ class _UpdateCheckerDialogState extends State<UpdateCheckerDialog> {
 
   void _applyResult(UpdateCheckResult r) {
     _fastestProxy = r.fastestProxy;
-    _fastestLatency = r.fastestLatency;
     _latestVersion = r.version;
     _isLatest = r.isLatest;
     _downloadUrl = r.downloadUrl;
