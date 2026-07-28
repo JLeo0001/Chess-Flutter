@@ -41,7 +41,6 @@
 | **arm64-v8a** | `Chess-Flutter-*-arm64.apk` | 2016年后安卓手机 | ⭐ **首选** |
 | armeabi-v7a | `Chess-Flutter-*-arm32.apk` | 老旧安卓手机 | |
 | x86_64 | `Chess-Flutter-*-x86_64.apk` | 模拟器 / Chromebook | |
-| universal | `Chess-Flutter-*-universal.apk` | 所有设备（体积最大） | |
 
 <p align="center">
   <a href="https://github.com/JLeo0001/Chess-Flutter/releases/latest">
@@ -49,7 +48,7 @@
   </a>
 </p>
 
-> 💡 推荐下载 **arm64-v8a** 版本（体积更小、速度更快）。如果安装失败请使用 universal 版本。
+> 💡 推荐下载 **arm64-v8a** 版本（体积更小、速度更快）。
 
 ### 其他平台
 
