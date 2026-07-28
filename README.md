@@ -13,6 +13,10 @@
   <img src="https://img.shields.io/badge/Android-8%2B-34A853?logo=android&logoColor=white&style=flat-square" alt="Android 8+"/>
   <img src="https://img.shields.io/badge/iOS-13%2B-000000?logo=apple&logoColor=white&style=flat-square" alt="iOS 13+"/>
   <img src="https://img.shields.io/badge/Web-PWA-4285F4?logo=googlechrome&logoColor=white&style=flat-square" alt="Web PWA"/>
+  <br>
+  <a href="https://jleo0001.github.io/Chess-Flutter/">
+    <img src="https://img.shields.io/badge/🌐_在线游玩-jleo0001.github.io%2FChess--Flutter-4285F4?style=for-the-badge&logo=googlechrome&logoColor=white" alt="在线游玩"/>
+  </a>
   <img src="https://img.shields.io/badge/Windows-10%2B-0078D6?logo=windows11&logoColor=white&style=flat-square" alt="Windows 10+"/>
   <img src="https://img.shields.io/badge/Linux-GTK3-E95420?logo=linux&logoColor=white&style=flat-square" alt="Linux"/>
   <img src="https://img.shields.io/badge/macOS-12%2B-000000?logo=apple&logoColor=white&style=flat-square" alt="macOS 12+"/>
@@ -293,6 +297,9 @@ git push origin feat/my-feature
   </a>
   <a href="https://github.com/JLeo0001/Chess-Flutter/issues">
     <img src="https://img.shields.io/badge/🐛_反馈问题-FF6B6B?style=for-the-badge" alt="Issues"/>
+  </a>
+  <a href="https://jleo0001.github.io/Chess-Flutter/">
+    <img src="https://img.shields.io/badge/🌐_在线游玩-4285F4?style=for-the-badge&logo=googlechrome&logoColor=white" alt="在线游玩"/>
   </a>
   <a href="https://github.com/JLeo0001/Chess-Flutter/releases">
     <img src="https://img.shields.io/badge/📦_下载_APK-34A853?style=for-the-badge" alt="Releases"/>
