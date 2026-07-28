@@ -12,6 +12,8 @@ class UpdateService {
   static const proxyUrls = [
     'https://gh-proxy.com/',
     'https://ghproxy.net/',
+    'https://ghproxy.homeboyc.cn/',
+    'https://github.tbap.top/',
     'https://gh.zwy.one/',
     'https://gh.llkk.cc/',
     'https://ghfile.geekertao.top/',
