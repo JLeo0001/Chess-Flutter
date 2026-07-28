@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
 import 'package:flutter/services.dart';
@@ -50,27 +51,25 @@ class UpdateService {
     final release = await fetchLatestRelease();
     if (release == null) return null;
     if (!isNewer(curVer, release.version)) return null;
-    final fastest = await _findFastestProxy();
+    final results = <_ProxyLatency>[];
+    for (final url in proxyUrls) {
+      final t = await _pingUrl(url);
+      results.add(_ProxyLatency(url, t));
+    }
+    results.sort((a, b) => (a.latency ?? 999999).compareTo(b.latency ?? 999999));
+    final topProxies = results
+        .where((r) => r.latency != null)
+        .take(3)
+        .map((r) => r.url)
+        .toList();
     final asset = findPlatformAsset(release.assets);
     return UpdateCheckResult(
-      fastestProxy: fastest ?? _directUrl,
+      fastestProxy: topProxies.isNotEmpty ? topProxies.first : _directUrl,
       version: release.version,
+      topProxies: topProxies,
       assetName: asset?.name,
       downloadUrl: asset?.downloadUrl,
     );
-  }
-
-  static Future<String?> _findFastestProxy() async {
-    String? bestUrl;
-    int? bestTime;
-    for (final url in proxyUrls) {
-      final t = await _pingUrl(url);
-      if (t != null && (bestTime == null || t < bestTime)) {
-        bestTime = t;
-        bestUrl = url;
-      }
-    }
-    return bestUrl;
   }
 
   static Future<int?> _pingUrl(String url) async {
@@ -133,62 +132,84 @@ class UpdateService {
     return null;
   }
 
+  /// 多路竞速下载：同时从多个代理 + GitHub 直连下载，谁先完成用谁
   static Future<String?> downloadWithProgress({
     required String directUrl,
-    required String proxyBase,
+    required List<String> raceProxies,
     required String saveName,
     required void Function(double progress) onProgress,
     Future<bool> Function()? shouldCancel,
   }) async {
-    final bool isDirect = proxyBase == _directUrl;
-    final primaryUrl = isDirect
-        ? directUrl
-        : '${proxyBase.endsWith('/') ? proxyBase : '$proxyBase/'}$directUrl';
-    final urlsToTry = isDirect ? [directUrl] : [primaryUrl, directUrl];
-    for (final downloadUrl in urlsToTry) {
-      final result = await _downloadSingleUrl(
-        downloadUrl: downloadUrl,
-        saveName: saveName,
-        onProgress: onProgress,
-        shouldCancel: shouldCancel,
-      );
-      if (result != null) return result;
-      if (shouldCancel != null && await shouldCancel()) return null;
+    // 构建竞速 URL 列表：代理在前，直连兜底
+    final urls = <String>[];
+    for (final proxy in raceProxies) {
+      urls.add('${proxy.endsWith('/') ? proxy : '$proxy/'}$directUrl');
     }
-    return null;
-  }
+    urls.add(directUrl); // GitHub 直连
 
-  static Future<String?> _downloadSingleUrl({
-    required String downloadUrl,
-    required String saveName,
-    required void Function(double progress) onProgress,
-    Future<bool> Function()? shouldCancel,
-  }) async {
-    try {
-      final dir = await getTemporaryDirectory();
-      final file = File('${dir.path}/$saveName');
-      final request = http.Request('GET', Uri.parse(downloadUrl));
-      final http.StreamedResponse response = await request.send();
-      if (response.statusCode != 200 && response.statusCode != 302 && response.statusCode != 301) {
-        return null;
-      }
-      final total = response.contentLength ?? 0;
-      var received = 0;
-      final sink = file.openWrite();
-      await for (final chunk in response.stream) {
-        if (shouldCancel != null && await shouldCancel()) {
-          await sink.close();
-          response.stream.drain();
-          file.deleteSync();
-          return null;
+    final dir = await getTemporaryDirectory();
+    final completer = Completer<String?>();
+    int remaining = urls.length;
+    double _bestProgress = 0;
+
+    Future<void> race(String url) async {
+      try {
+        final file = File('${dir.path}/${saveName}_${urls.indexOf(url)}');
+        final request = http.Request('GET', Uri.parse(url));
+        final http.StreamedResponse response = await request.send();
+        if (response.statusCode != 200 && response.statusCode != 302 && response.statusCode != 301) {
+          throw Exception('bad status ${response.statusCode}');
         }
-        received += chunk.length;
-        sink.add(chunk);
-        if (total > 0) onProgress(received / total);
+        final total = response.contentLength ?? 0;
+        var received = 0;
+        final sink = file.openWrite();
+        await for (final chunk in response.stream) {
+          if (completer.isCompleted) {
+            await sink.close();
+            response.stream.drain();
+            file.deleteSync();
+            return;
+          }
+          if (shouldCancel != null && await shouldCancel()) {
+            await sink.close();
+            response.stream.drain();
+            file.deleteSync();
+            if (!completer.isCompleted) completer.complete(null);
+            return;
+          }
+          received += chunk.length;
+          sink.add(chunk);
+          if (total > 0) {
+            final p = received / total;
+            if (p > _bestProgress) {
+              _bestProgress = p;
+              onProgress(p);
+            }
+          }
+        }
+        await sink.close();
+        if (!completer.isCompleted) {
+          // 重命名为最终文件名
+          final finalFile = File('${dir.path}/$saveName');
+          if (finalFile.existsSync()) finalFile.deleteSync();
+          file.renameSync(finalFile.path);
+          completer.complete(finalFile.path);
+        } else {
+          file.deleteSync();
+        }
+      } catch (_) {
+        if (!completer.isCompleted) {
+          remaining--;
+          if (remaining <= 0) completer.complete(null);
+        }
       }
-      await sink.close();
-      return file.path;
-    } catch (_) { return null; }
+    }
+
+    for (final url in urls) {
+      race(url);
+    }
+
+    return completer.future;
   }
 
   static Future<UpdateCheckResult?> fullCheck({
@@ -197,24 +218,30 @@ class UpdateService {
     final release = await fetchLatestRelease();
     if (release == null) return null;
     final curVer = await currentVersion;
-    String? fastestUrl;
-    int? fastestLatency;
+    final results = <_ProxyLatency>[];
     final total = proxyUrls.length;
     for (int i = 0; i < total; i++) {
       final url = proxyUrls[i];
       onProgress?.call(i, total, url, null);
       final t = await _pingUrl(url);
       onProgress?.call(i + 1, total, url, t);
-      if (t != null && (fastestLatency == null || t < fastestLatency)) {
-        fastestLatency = t;
-        fastestUrl = url;
-      }
+      results.add(_ProxyLatency(url, t));
     }
+    // 按延迟排序，取前 3 个可达的
+    results.sort((a, b) => (a.latency ?? 999999).compareTo(b.latency ?? 999999));
+    final topProxies = results
+        .where((r) => r.latency != null)
+        .take(3)
+        .map((r) => r.url)
+        .toList();
+    final fastestUrl = topProxies.isNotEmpty ? topProxies.first : null;
+    final fastestLatency = results.isNotEmpty ? results.first.latency : null;
     final hasUpdate = isNewer(curVer, release.version);
     final asset = hasUpdate ? findPlatformAsset(release.assets) : null;
     return UpdateCheckResult(
       fastestProxy: fastestUrl ?? _directUrl,
       fastestLatency: fastestLatency,
+      topProxies: topProxies,
       version: release.version,
       isLatest: !hasUpdate,
       assetName: asset?.name,
@@ -226,6 +253,7 @@ class UpdateService {
 class UpdateCheckResult {
   final String fastestProxy;
   final int? fastestLatency;
+  final List<String> topProxies;
   final String version;
   final bool isLatest;
   final String? assetName;
@@ -233,6 +261,7 @@ class UpdateCheckResult {
   UpdateCheckResult({
     required this.fastestProxy,
     this.fastestLatency,
+    this.topProxies = const [],
     required this.version,
     this.isLatest = false,
     this.assetName,
@@ -257,4 +286,10 @@ class AssetInfo {
   final String name;
   final String downloadUrl;
   AssetInfo({required this.name, required this.downloadUrl});
+}
+
+class _ProxyLatency {
+  final String url;
+  final int? latency;
+  _ProxyLatency(this.url, this.latency);
 }

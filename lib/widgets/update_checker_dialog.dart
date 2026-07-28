@@ -19,6 +19,7 @@ class _UpdateCheckerDialogState extends State<UpdateCheckerDialog> {
   final List<_SpeedItem> _speedItems = [];
   int _testedCount = 0;
   String? _fastestProxy;
+  List<String> _raceProxies = [];
   bool _isLatest = true;
   String? _latestVersion;
   String? _downloadUrl;
@@ -47,6 +48,7 @@ class _UpdateCheckerDialogState extends State<UpdateCheckerDialog> {
 
   void _applyResult(UpdateCheckResult r) {
     _fastestProxy = r.fastestProxy;
+    _raceProxies = r.topProxies;
     _latestVersion = r.version;
     _isLatest = r.isLatest;
     _downloadUrl = r.downloadUrl;
@@ -86,10 +88,12 @@ class _UpdateCheckerDialogState extends State<UpdateCheckerDialog> {
   bool _cancelled = false;
 
   Future<void> _startDownload() async {
-    if (_downloadUrl == null || _fastestProxy == null) return;
+    if (_downloadUrl == null || _raceProxies.isEmpty && _fastestProxy == null) return;
     setState(() { _step = 3; _downloadProgress = 0; _cancelled = false; });
+    final proxies = _raceProxies.isNotEmpty ? _raceProxies : [_fastestProxy!];
     final path = await UpdateService.downloadWithProgress(
-      directUrl: _downloadUrl!, proxyBase: _fastestProxy!,
+      directUrl: _downloadUrl!,
+      raceProxies: proxies,
       saveName: _assetName ?? '更新包',
       onProgress: (p) { if (mounted) setState(() => _downloadProgress = p); },
       shouldCancel: () async => _cancelled,
