@@ -141,15 +141,37 @@ class UpdateService {
     Future<bool> Function()? shouldCancel,
   }) async {
     final bool isDirect = proxyBase == _directUrl;
-    final downloadUrl = isDirect
+    final primaryUrl = isDirect
         ? directUrl
-        : '${proxyBase.endsWith('/') ? proxyBase : '$proxyBase/'}${Uri.parse(directUrl).host}${Uri.parse(directUrl).path}';
+        : '${proxyBase.endsWith('/') ? proxyBase : '$proxyBase/'}$directUrl';
+    final urlsToTry = isDirect ? [directUrl] : [primaryUrl, directUrl];
+    for (final downloadUrl in urlsToTry) {
+      final result = await _downloadSingleUrl(
+        downloadUrl: downloadUrl,
+        saveName: saveName,
+        onProgress: onProgress,
+        shouldCancel: shouldCancel,
+      );
+      if (result != null) return result;
+      if (shouldCancel != null && await shouldCancel()) return null;
+    }
+    return null;
+  }
+
+  static Future<String?> _downloadSingleUrl({
+    required String downloadUrl,
+    required String saveName,
+    required void Function(double progress) onProgress,
+    Future<bool> Function()? shouldCancel,
+  }) async {
     try {
       final dir = await getTemporaryDirectory();
       final file = File('${dir.path}/$saveName');
       final request = http.Request('GET', Uri.parse(downloadUrl));
       final http.StreamedResponse response = await request.send();
-      if (response.statusCode != 200) return null;
+      if (response.statusCode != 200 && response.statusCode != 302 && response.statusCode != 301) {
+        return null;
+      }
       final total = response.contentLength ?? 0;
       var received = 0;
       final sink = file.openWrite();
