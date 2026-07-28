@@ -380,32 +380,36 @@ jobs:
       - name: Build Windows (release)
         run: |
           # VS 2026 装了但没有 VS 2019/2022 generator。
-          # Flutter 硬编码 -G "Visual Studio 16 2019"，但这个 generator
-          # 不认识 VS 2026 实例路径。我们在 PATH 里插一个 cmake.bat 包装器，
-          # 透明地把 generator 换成 Visual Studio 17 2022（CMake 内置支持）。
+          # Flutter 硬编码 -G "Visual Studio 16 2019"。
+          #
+          # 策略：把 cmake.exe 重命名为 cmake_real.exe，然后在同目录下
+          # 创建 cmake.bat 包装器。Windows 搜索 cmake 时先找 .exe，
+          # 找不到就会找 .bat → 我们的包装器拦截调用，透明替换 generator。
           $vsPath = & "${env:ProgramFiles(x86)}\Microsoft Visual Studio\Installer\vswhere.exe" `
             -latest -property installationPath
           Write-Host "VS installed at: $vsPath"
 
-          # 定位真实 cmake.exe
-          $realCmake = (Get-Command cmake).Source
-          Write-Host "Real cmake: $realCmake"
+          $cmakeExe = (Get-Command cmake).Source
+          $cmakeDir = Split-Path -Parent $cmakeExe
+          Write-Host "cmake.exe: $cmakeExe"
 
-          # 创建包装器目录（放在 PATH 最前面）
-          $wrapDir = "$env:RUNNER_TEMP\cmake-wrap"
-          New-Item -ItemType Directory -Force -Path $wrapDir | Out-Null
+          # 重命名 cmake.exe → cmake_real.exe
+          $cmakeReal = Join-Path $cmakeDir "cmake_real.exe"
+          Rename-Item -Path $cmakeExe -NewName "cmake_real.exe" -Force
+          Write-Host "Renamed → $cmakeReal"
 
-          # cmake.bat 包装器：替换 generator，转发其余参数
+          # 创建 cmake.bat 包装器（同目录，所以一定被找到）
           @"
           @echo off
           setlocal enabledelayedexpansion
-          set "args=%*"
-          set "args=!args:Visual Studio 16 2019=Visual Studio 17 2022!"
-          "$realCmake" !args!
-          "@ | Out-File -FilePath "$wrapDir\cmake.bat" -Encoding ASCII -Force
+          set "ALLARGS=%*"
+          set "ALLARGS=!ALLARGS:Visual Studio 16 2019=Visual Studio 17 2022!"
+          "$cmakeReal" !ALLARGS!
+          "@ | Out-File -FilePath "$cmakeDir\cmake.bat" -Encoding ASCII -Force
 
-          # 插入包装器目录到 PATH 最前面
-          $env:PATH = "$wrapDir;$env:PATH"
+          # 也创建 cmake.cmd 以防万一
+          Copy-Item "$cmakeDir\cmake.bat" "$cmakeDir\cmake.cmd" -Force
+          Write-Host "Created cmake.bat + cmake.cmd wrapper"
 
           # CMAKE_GENERATOR_INSTANCE 指向 VS 2026
           $env:CMAKE_GENERATOR_INSTANCE = $vsPath
