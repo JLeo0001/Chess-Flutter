@@ -1,10 +1,22 @@
 import 'package:flutter/material.dart';
 import 'package:url_launcher/url_launcher.dart';
+import '../services/update_service.dart';
 import '../widgets/update_checker_dialog.dart';
 
-/// 关于页面 — 使用 M3 ListTile + Card
-class AboutPage extends StatelessWidget {
+class AboutPage extends StatefulWidget {
   const AboutPage({super.key});
+  @override
+  State<AboutPage> createState() => _AboutPageState();
+}
+
+class _AboutPageState extends State<AboutPage> {
+  String _version = '...';
+
+  @override
+  void initState() {
+    super.initState();
+    UpdateService.currentVersion.then((v) => setState(() => _version = v));
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -36,7 +48,7 @@ class AboutPage extends StatelessWidget {
               Text('多合一棋牌游戏',
                   style: TextStyle(fontSize: 14, color: cs.onSurfaceVariant)),
               const SizedBox(height: 2),
-              Text('v1.0.2',
+              Text('v$_version',
                   style: TextStyle(fontSize: 12, color: cs.onSurfaceVariant)),
             ]),
           ),
