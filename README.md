@@ -280,13 +280,6 @@ git push origin feat/my-feature
 # 5. 创建 Pull Request
 ```
 
-### 开发约定
-
-- **分支命名**: `feat/xxx`, `fix/xxx`, `docs/xxx`, `refactor/xxx`
-- **提交信息**: [Conventional Commits](https://www.conventionalcommits.org/) 风格
-- **代码风格**: 遵循 `flutter_lints` 推荐规则
-- **测试**: 新逻辑尽量附带单元测试
-
 ---
 
 ## 📜 许可证
