@@ -23,6 +23,7 @@ class _MenuPageState extends State<MenuPage>
     ('中国象棋', '9×10 · 楚河汉界 · 红先黑后', Icons.shield_outlined, 'chinese_chess'),
     ('国际象棋', '8×8 · 多引擎 · 白先黑后', Icons.workspace_premium, 'international_chess'),
     ('围棋', '19×19 · 围地获胜 · 人机/双人', Icons.change_circle_outlined, 'go'),
+    ('中国跳棋', '六角星形 · 搭桥跳跃 · 2~6人', Icons.star_outlined, 'chinese_checkers'),
     ('扑克', '换牌扑克 · 德州扑克 · 斗地主', Icons.style, 'poker'),
     ('UNO', '2~4 人对战 · 经典规则 · 人机', Icons.palette_outlined, 'uno'),
     ('蜘蛛纸牌', '单人接龙 · 104张 · 三种难度', Icons.ac_unit, 'spider'),

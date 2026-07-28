@@ -23,6 +23,7 @@ import 'pages/uno_game_page.dart';
 import 'pages/doudizhu_game_page.dart';
 import 'pages/go_game_page.dart';
 import 'pages/spider_game_page.dart';
+import 'pages/cc_checkers_game_page.dart';
 import 'third_party/circular_theme_reveal/circular_theme_reveal.dart';
 
 void main() {
@@ -151,6 +152,10 @@ class _ChessAppState extends State<ChessApp> {
               case '/spider':
                 final spArgs = settings.arguments as Map<String, dynamic>?;
                 return _page(SpiderGamePage(suitCount: spArgs?['suits'] as int? ?? 1));
+              case '/game/chinese_checkers':
+                final ccArgs = settings.arguments as Map<String, dynamic>?;
+                final pCount = ccArgs?['players'] as int? ?? 2;
+                return _page(ChineseCheckersGamePage(numPlayers: pCount));
               default:
                 return _page(const MenuPage());
             }
