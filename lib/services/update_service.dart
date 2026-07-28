@@ -9,6 +9,7 @@ class UpdateService {
   static const _repoName = 'Chess-Flutter';
 
   static const proxyUrls = [
+    'https://github.com/',
     'https://gh-proxy.com/',
     'https://ghproxy.net/',
     'https://ghproxy.homeboyc.cn/',
@@ -137,9 +138,10 @@ class UpdateService {
     required String saveName,
     required void Function(double progress) onProgress,
   }) async {
-    final cleanProxy = proxyBase.endsWith('/') ? proxyBase : '$proxyBase/';
-    final uri = Uri.parse(directUrl);
-    final downloadUrl = '$cleanProxy${uri.host}${uri.path}';
+    final bool isDirect = proxyBase.contains('github.com/');
+    final downloadUrl = isDirect
+        ? directUrl
+        : '${proxyBase.endsWith('/') ? proxyBase : '$proxyBase/'}${Uri.parse(directUrl).host}${Uri.parse(directUrl).path}';
     try {
       final dir = await getTemporaryDirectory();
       final file = File('${dir.path}/$saveName');
