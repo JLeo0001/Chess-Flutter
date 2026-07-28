@@ -71,7 +71,7 @@ class CCAi {
       }
 
       // 搭桥位置
-      final centerDist = game.hexDistance(toIdx, game.positions.length ~/ 2);
+      final centerDist = game.hexDistance(toIdx, game.centerIndex);
       if (centerDist <= 4 && !nowInCamp) score += _bridgeBonus;
 
       // 优先移动后方棋子

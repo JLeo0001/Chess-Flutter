@@ -49,6 +49,14 @@ class ChineseCheckersGame {
         _posIndex = {},
         _neighbors = [],
         camps = List.generate(6, (_) => []) {
+    if (!const {2, 3, 4, 6}.contains(numPlayers)) {
+      throw ArgumentError.value(
+        numPlayers,
+        'numPlayers',
+        '中国跳棋仅支持 2、3、4 或 6 人',
+      );
+    }
+
     // 构建坐标→索引映射
     for (int i = 0; i < positions.length; i++) {
       _posIndex['${positions[i].q},${positions[i].r}'] = i;
@@ -74,6 +82,7 @@ class ChineseCheckersGame {
   Set<int> get validTargets => _validTargets;
   Set<int> get pickablePieces => _pickablePieces;
   int get moveCount => _moveHistory.length;
+  int get centerIndex => _posIndex['0,0']!;
 
   // ————— 玩家索引 -> 颜色编号（1..6）对外 —————
 
@@ -364,7 +373,7 @@ class ChineseCheckersGame {
 
     // 跳跃：DFS 查找所有跳链
     final visited = <int>{fromIdx};
-    _findJumps(fromIdx, visited, targets);
+    _findJumps(fromIdx, fromIdx, visited, targets);
 
     // 不能留在原位
     targets.remove(fromIdx);
@@ -373,9 +382,15 @@ class ChineseCheckersGame {
   }
 
   /// DFS 查找所有可通过跳跃到达的位置
-  void _findJumps(int fromIdx, Set<int> visited, Set<int> targets) {
+  void _findJumps(
+    int fromIdx,
+    int moveOrigin,
+    Set<int> visited,
+    Set<int> targets,
+  ) {
     for (final nb in _neighbors[fromIdx]) {
-      if (board[nb] == empty) continue; // 相邻为空则不能跳
+      // 连跳开始后原始棋位已经空出，不能再被当作搭桥棋子。
+      if (nb == moveOrigin || board[nb] == empty) continue;
       // 相邻有棋子，检查对称位置
       final pFrom = positions[fromIdx];
       final pNb = positions[nb];
@@ -391,7 +406,7 @@ class ChineseCheckersGame {
       targets.add(jumpIdx);
 
       // 继续连跳
-      _findJumps(jumpIdx, visited, targets);
+      _findJumps(jumpIdx, moveOrigin, visited, targets);
     }
   }
 
