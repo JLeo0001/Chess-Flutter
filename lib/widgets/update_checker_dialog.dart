@@ -154,7 +154,7 @@ class _UpdateCheckerDialogState extends State<UpdateCheckerDialog> {
       const SizedBox(height: 12),
       Flexible(
         child: Container(constraints: const BoxConstraints(maxHeight: 200), child: ListView.builder(
-          shrinkWrap: true, itemCount: _speedItems.length.clamp(0, 5),
+          shrinkWrap: true, itemCount: _speedItems.length,
           itemBuilder: (_, i) {
             final item = _speedItems[i];
             return Padding(padding: const EdgeInsets.symmetric(vertical: 2), child: Row(children: [
