@@ -28,9 +28,15 @@ class _UpdateCheckerDialogState extends State<UpdateCheckerDialog> {
   bool _downloadError = false;
   bool _checkingFailed = false;
 
+  String? _localVersion;
+
   @override
   void initState() {
     super.initState();
+    UpdateService.currentVersion.then((v) {
+      _localVersion = v;
+      if (mounted) setState(() {});
+    });
     if (widget.mode == 'result' && widget.result != null) {
       _applyResult(widget.result!);
     } else {
@@ -182,7 +188,7 @@ class _UpdateCheckerDialogState extends State<UpdateCheckerDialog> {
       if (_isLatest) ...[
         const Icon(Icons.check_circle, size: 48, color: Colors.green),
         const SizedBox(height: 12),
-        Text('当前版本 ${UpdateService.currentVersion} 已是最新',
+        Text('当前版本 ${_localVersion ?? '...'} 已是最新',
             style: TextStyle(color: cs.onSurface)),
       ] else ...[
         Icon(Icons.system_update, size: 48, color: cs.primary),
@@ -190,7 +196,7 @@ class _UpdateCheckerDialogState extends State<UpdateCheckerDialog> {
         Text('发现新版本 v$_latestVersion',
             style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: cs.onSurface)),
         const SizedBox(height: 4),
-        Text('当前版本: ${UpdateService.currentVersion}',
+        Text('当前版本: ${_localVersion ?? '...'}',
             style: TextStyle(fontSize: 13, color: cs.onSurfaceVariant)),
         if (_assetName != null) ...[
           const SizedBox(height: 8),

@@ -1,10 +1,10 @@
 import 'dart:convert';
 import 'dart:io';
+import 'package:flutter/services.dart';
 import 'package:http/http.dart' as http;
 import 'package:path_provider/path_provider.dart';
 
 class UpdateService {
-  static const _currentVersion = '1.0.2';
   static const _repoOwner = 'JLeo0001';
   static const _repoName = 'Chess-Flutter';
   static const _directUrl = 'https://github.com/';
@@ -28,13 +28,28 @@ class UpdateService {
     'https://gh.monlor.com/',
   ];
 
+  static String? _currentVersion;
+
+  static Future<String> get currentVersion async {
+    if (_currentVersion != null) return _currentVersion!;
+    try {
+      final yaml = await rootBundle.loadString('pubspec.yaml');
+      final match = RegExp(r'^version:\s*(\S+)', multiLine: true).firstMatch(yaml);
+      if (match != null) {
+        final v = match.group(1)!;
+        _currentVersion = v.contains('+') ? v.split('+').first : v;
+        return _currentVersion!;
+      }
+    } catch (_) {}
+    _currentVersion = '0.0.0';
+    return _currentVersion!;
+  }
+
   static Future<UpdateCheckResult?> silentCheck() async {
+    final curVer = await currentVersion;
     final release = await fetchLatestRelease();
     if (release == null) return null;
-
-    final hasUpdate = isNewer(_currentVersion, release.version);
-    if (!hasUpdate) return null;
-
+    if (!isNewer(curVer, release.version)) return null;
     final fastest = await _findFastestProxy();
     final asset = findPlatformAsset(release.assets);
     return UpdateCheckResult(
@@ -101,8 +116,6 @@ class UpdateService {
     return parts;
   }
 
-  static String get currentVersion => _currentVersion;
-
   static AssetInfo? findPlatformAsset(List<AssetInfo> assets) {
     if (Platform.isAndroid) {
       for (final p in ['android-arm64', 'android-arm32', 'android-x64']) {
@@ -152,11 +165,9 @@ class UpdateService {
   static Future<UpdateCheckResult?> fullCheck({
     void Function(int tested, int total, String url, int? latency)? onProgress,
   }) async {
-    // 先查版本（直接调 GitHub API，不走代理）
     final release = await fetchLatestRelease();
     if (release == null) return null;
-
-    // 测速找最快代理（github.com 兜底）
+    final curVer = await currentVersion;
     String? fastestUrl;
     int? fastestLatency;
     final total = proxyUrls.length;
@@ -170,10 +181,8 @@ class UpdateService {
         fastestUrl = url;
       }
     }
-
-    final hasUpdate = isNewer(_currentVersion, release.version);
+    final hasUpdate = isNewer(curVer, release.version);
     final asset = hasUpdate ? findPlatformAsset(release.assets) : null;
-
     return UpdateCheckResult(
       fastestProxy: fastestUrl ?? _directUrl,
       fastestLatency: fastestLatency,
