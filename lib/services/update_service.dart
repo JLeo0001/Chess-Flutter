@@ -27,6 +27,10 @@ class UpdateService {
     'https://fastgit.cc/',
     'https://ghfast.top/',
     'https://gh.monlor.com/',
+    'https://mirror.ghproxy.com/',
+    'https://gh.con.sh/',
+    'https://gh.api.99988866.xyz/',
+    'https://gitdl.cn/',
   ];
 
   static String? _currentVersion;
@@ -132,7 +136,7 @@ class UpdateService {
     return null;
   }
 
-  /// 多路竞速下载：同时从多个代理 + GitHub 直连下载，谁先完成用谁
+  /// 渐进式竞速下载：先跑最快2路，3秒后进度<15%再加2路，省带宽
   static Future<String?> downloadWithProgress({
     required String directUrl,
     required List<String> raceProxies,
@@ -140,23 +144,30 @@ class UpdateService {
     required void Function(double progress) onProgress,
     Future<bool> Function()? shouldCancel,
   }) async {
-    // 构建竞速 URL 列表：代理在前，直连兜底
-    final urls = <String>[];
+    // 构建所有候选 URL：代理在前，GitHub CDN 直连在后
+    final allUrls = <String>[];
     for (final proxy in raceProxies) {
-      urls.add('${proxy.endsWith('/') ? proxy : '$proxy/'}$directUrl');
+      allUrls.add('${proxy.endsWith('/') ? proxy : '$proxy/'}$directUrl');
     }
-    urls.add(directUrl); // GitHub 直连
+    allUrls.add(directUrl); // GitHub CDN (objects.githubusercontent.com)
 
     final dir = await getTemporaryDirectory();
     final completer = Completer<String?>();
-    int remaining = urls.length;
+    final finished = <int>{}; // 记录哪些索引已完成/失败
     double _bestProgress = 0;
+    int activeCount = allUrls.length;
+    bool _secondWaveFired = false;
 
-    Future<void> race(String url) async {
+    Future<void> race(int index) async {
+      if (completer.isCompleted) return;
+      final url = allUrls[index];
       try {
-        final file = File('${dir.path}/${saveName}_${urls.indexOf(url)}');
+        final file = File('${dir.path}/${saveName}_$index');
         final request = http.Request('GET', Uri.parse(url));
-        final http.StreamedResponse response = await request.send();
+        final http.StreamedResponse response = await request.send().timeout(
+          const Duration(seconds: 120),
+          onTimeout: () => throw Exception('timeout'),
+        );
         if (response.statusCode != 200 && response.statusCode != 302 && response.statusCode != 301) {
           throw Exception('bad status ${response.statusCode}');
         }
@@ -189,7 +200,6 @@ class UpdateService {
         }
         await sink.close();
         if (!completer.isCompleted) {
-          // 重命名为最终文件名
           final finalFile = File('${dir.path}/$saveName');
           if (finalFile.existsSync()) finalFile.deleteSync();
           file.renameSync(finalFile.path);
@@ -199,14 +209,31 @@ class UpdateService {
         }
       } catch (_) {
         if (!completer.isCompleted) {
-          remaining--;
-          if (remaining <= 0) completer.complete(null);
+          finished.add(index);
+          activeCount--;
+          if (activeCount <= 0) completer.complete(null);
         }
       }
     }
 
-    for (final url in urls) {
-      race(url);
+    // 第一波：前 2 路（如果总共不到 2 路就全跑）
+    final firstWave = allUrls.length >= 2 ? 2 : allUrls.length;
+    for (int i = 0; i < firstWave; i++) {
+      race(i);
+    }
+
+    // 3 秒后检查：如果进度不足 15% 且还有待命 URL，启动第二波
+    if (allUrls.length > 2) {
+      Future.delayed(const Duration(seconds: 3), () {
+        if (!completer.isCompleted && !_secondWaveFired && _bestProgress < 0.15) {
+          _secondWaveFired = true;
+          for (int i = firstWave; i < allUrls.length; i++) {
+            if (!finished.contains(i)) {
+              race(i);
+            }
+          }
+        }
+      });
     }
 
     return completer.future;
