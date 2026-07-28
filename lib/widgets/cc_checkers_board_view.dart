@@ -172,8 +172,8 @@ class _CCBoardPainter extends CustomPainter {
   @override
   void paint(Canvas canvas, Size size) {
     final w = size.width, h = size.height;
-    final holeR = cellR * 0.44;  // 孔半径（相邻孔心距≈1.73*cellR，0.44留出间距）
-    final pieceR = holeR * 0.82; // 棋子略小于孔
+    final holeR = cellR * 0.68;
+    final pieceR = holeR * 0.88;
 
     // 背景
     canvas.drawRect(
