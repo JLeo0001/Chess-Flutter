@@ -54,19 +54,19 @@
 ### 其他平台
 
 <p align="center">
-  <a href="https://github.com/JLeo0001/Chess-Flutter/actions/workflows/build.yml">
+  <a href="https://github.com/JLeo0001/Chess-Flutter/releases/latest">
     <img src="https://img.shields.io/badge/Web-PWA-4285F4?style=for-the-badge&logo=googlechrome&logoColor=white" alt="Web PWA"/>
   </a>
-  <a href="https://github.com/JLeo0001/Chess-Flutter/actions/workflows/build.yml">
+  <a href="https://github.com/JLeo0001/Chess-Flutter/releases/latest">
     <img src="https://img.shields.io/badge/Windows-x64-0078D6?style=for-the-badge&logo=windows11&logoColor=white" alt="Windows x64"/>
   </a>
-  <a href="https://github.com/JLeo0001/Chess-Flutter/actions/workflows/build.yml">
+  <a href="https://github.com/JLeo0001/Chess-Flutter/releases/latest">
     <img src="https://img.shields.io/badge/Linux-AppImage%20%7C%20deb-E95420?style=for-the-badge&logo=linux&logoColor=white" alt="Linux"/>
   </a>
-  <a href="https://github.com/JLeo0001/Chess-Flutter/actions/workflows/build.yml">
+  <a href="https://github.com/JLeo0001/Chess-Flutter/releases/latest">
     <img src="https://img.shields.io/badge/macOS-DMG-000000?style=for-the-badge&logo=apple&logoColor=white" alt="macOS DMG"/>
   </a>
-  <a href="https://github.com/JLeo0001/Chess-Flutter/actions/workflows/build.yml">
+  <a href="https://github.com/JLeo0001/Chess-Flutter/releases/latest">
     <img src="https://img.shields.io/badge/iOS-.app%20%7C%20.ipa-000000?style=for-the-badge&logo=apple&logoColor=white" alt="iOS app and ipa"/>
   </a>
 </p>
@@ -74,7 +74,7 @@
 | 平台 | 构建产物 | 获取方式 |
 |:---|:---|:---|
 | 🌐 **Web (PWA)** | `Chess-Flutter-*-web.zip` | CI artifact，解压后部署到任意静态服务器 |
-| ![Windows](https://img.shields.io/badge/Windows-0078D6?style=flat-square&logo=windows11&logoColor=white) | `Chess-Flutter-*-windows-x64.zip` | 解压 → 运行 `chess_app.exe` |
+| 🪟 **Windows** | `Chess-Flutter-*-windows-x64.zip` | 解压 → 运行 `chess_app.exe` |
 | 🐧 **Linux** | `*-x86_64.AppImage` / `*.deb` / `*.tar.gz` | **AppImage**: 双击运行 · **deb**: `sudo dpkg -i` · **tar.gz**: 解压运行 |
 | 🍎 **macOS** | `弈-*-macos.dmg` | 双击 → 拖到 Applications 文件夹 |
 | 📱 **iOS** | `弈-*-ios.app.zip` · `弈-*-ios.ipa` | **.app.zip**: Xcode → Devices 拖入 · **.ipa**: SideLoadly / AltStore |
