@@ -86,11 +86,11 @@ class _UpdateCheckerDialogState extends State<UpdateCheckerDialog> {
   bool _cancelled = false;
 
   Future<void> _startDownload() async {
-    if (_downloadUrl == null || _fastestProxy == null) return;
+    if (_downloadUrl == null) return;
     setState(() { _step = 3; _downloadProgress = 0; _cancelled = false; });
     final path = await UpdateService.downloadWithProgress(
       directUrl: _downloadUrl!,
-      raceProxies: [_fastestProxy!],
+      raceProxies: _fastestProxy != null ? [_fastestProxy!] : [],
       saveName: _assetName ?? '更新包',
       onProgress: (p) { if (mounted) setState(() => _downloadProgress = p); },
       shouldCancel: () async => _cancelled,

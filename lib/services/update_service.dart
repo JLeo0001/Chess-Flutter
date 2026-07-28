@@ -57,7 +57,7 @@ class UpdateService {
     final fastest = await _findFastestProxy();
     final asset = findPlatformAsset(release.assets);
     return UpdateCheckResult(
-      fastestProxy: fastest ?? _directUrl,
+      fastestProxy: fastest,
       version: release.version,
       assetName: asset?.name,
       downloadUrl: asset?.downloadUrl,
@@ -137,7 +137,7 @@ class UpdateService {
     return null;
   }
 
-  /// 单线下载：直接用最快代理，失败回退 GitHub 直连
+  /// 单线下载：先用最快代理，失败回退 GitHub 直连
   static Future<String?> downloadWithProgress({
     required String directUrl,
     required List<String> raceProxies,
@@ -147,6 +147,8 @@ class UpdateService {
   }) async {
     final urlsToTry = <String>[];
     for (final proxy in raceProxies) {
+      // 跳过 _directUrl 占位符，避免拼出双重 https:// 的无效 URL
+      if (proxy == _directUrl) continue;
       urlsToTry.add('${proxy.endsWith('/') ? proxy : '$proxy/'}$directUrl');
     }
     urlsToTry.add(directUrl); // GitHub 直连兜底
@@ -158,7 +160,7 @@ class UpdateService {
         final file = File('${dir.path}/$saveName');
         final request = http.Request('GET', Uri.parse(url));
         final http.StreamedResponse response = await request.send().timeout(
-          const Duration(seconds: 8),
+          const Duration(seconds: 15),
           onTimeout: () => throw Exception('connect timeout'),
         );
         if (response.statusCode != 200 && response.statusCode != 302 && response.statusCode != 301) {
@@ -209,7 +211,7 @@ class UpdateService {
     final hasUpdate = isNewer(curVer, release.version);
     final asset = hasUpdate ? findPlatformAsset(release.assets) : null;
     return UpdateCheckResult(
-      fastestProxy: fastestUrl ?? _directUrl,
+      fastestProxy: fastestUrl,
       fastestLatency: fastestLatency,
       version: release.version,
       isLatest: !hasUpdate,
@@ -220,14 +222,14 @@ class UpdateService {
 }
 
 class UpdateCheckResult {
-  final String fastestProxy;
+  final String? fastestProxy;
   final int? fastestLatency;
   final String version;
   final bool isLatest;
   final String? assetName;
   final String? downloadUrl;
   UpdateCheckResult({
-    required this.fastestProxy,
+    this.fastestProxy,
     this.fastestLatency,
     required this.version,
     this.isLatest = false,
