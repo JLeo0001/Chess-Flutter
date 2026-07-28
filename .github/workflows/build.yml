@@ -379,39 +379,50 @@ jobs:
 
       - name: Build Windows (release)
         run: |
-          # VS 2026 装了但没有 VS 2019/2022 generator。
-          # Flutter 硬编码 -G "Visual Studio 16 2019"。
-          #
-          # 策略：把 cmake.exe 重命名为 cmake_real.exe，然后在同目录下
-          # 创建 cmake.bat 包装器。Windows 搜索 cmake 时先找 .exe，
-          # 找不到就会找 .bat → 我们的包装器拦截调用，透明替换 generator。
+          # Flutter 3.27 hardcodes -G "Visual Studio 16 2019".
+          # windows-latest may have only a newer Visual Studio installed, so
+          # rewrite Flutter's CMake generator argument to the installed VS major.
           $vsPath = & "${env:ProgramFiles(x86)}\Microsoft Visual Studio\Installer\vswhere.exe" `
             -latest -property installationPath
           Write-Host "VS installed at: $vsPath"
 
+          $vsMajor = [int](Split-Path (Split-Path $vsPath -Parent) -Leaf)
+          switch ($vsMajor) {
+            18 { $cmakeGenerator = "Visual Studio 18 2026" }
+            17 { $cmakeGenerator = "Visual Studio 17 2022" }
+            16 { $cmakeGenerator = "Visual Studio 16 2019" }
+            default { throw "Unsupported Visual Studio major version: $vsMajor ($vsPath)" }
+          }
+          Write-Host "Using CMake generator: $cmakeGenerator"
+
           $cmakeExe = (Get-Command cmake).Source
           $cmakeDir = Split-Path -Parent $cmakeExe
           Write-Host "cmake.exe: $cmakeExe"
+          $visualStudioGenerators = & $cmakeExe --help | Select-String "Visual Studio"
+          $visualStudioGenerators | ForEach-Object { Write-Host $_ }
+          if (-not ($visualStudioGenerators | Select-String ([regex]::Escape($cmakeGenerator)))) {
+            throw "Installed CMake does not support generator: $cmakeGenerator"
+          }
 
-          # 重命名 cmake.exe → cmake_real.exe
+          # Rename cmake.exe so Windows command lookup falls through to cmake.bat/cmake.cmd.
           $cmakeReal = Join-Path $cmakeDir "cmake_real.exe"
           Rename-Item -Path $cmakeExe -NewName "cmake_real.exe" -Force
-          Write-Host "Renamed → $cmakeReal"
+          Write-Host "Renamed -> $cmakeReal"
 
-          # 创建 cmake.bat 包装器（同目录，所以一定被找到）
           @"
           @echo off
           setlocal enabledelayedexpansion
           set "ALLARGS=%*"
-          set "ALLARGS=!ALLARGS:Visual Studio 16 2019=Visual Studio 17 2022!"
+          echo cmake wrapper args before: !ALLARGS!
+          set "ALLARGS=!ALLARGS:Visual Studio 16 2019=$cmakeGenerator!"
+          echo cmake wrapper args after:  !ALLARGS!
           "$cmakeReal" !ALLARGS!
           "@ | Out-File -FilePath "$cmakeDir\cmake.bat" -Encoding ASCII -Force
 
-          # 也创建 cmake.cmd 以防万一
           Copy-Item "$cmakeDir\cmake.bat" "$cmakeDir\cmake.cmd" -Force
           Write-Host "Created cmake.bat + cmake.cmd wrapper"
 
-          # CMAKE_GENERATOR_INSTANCE 指向 VS 2026
+          $env:CMAKE_GENERATOR = $cmakeGenerator
           $env:CMAKE_GENERATOR_INSTANCE = $vsPath
 
           flutter build windows --release
