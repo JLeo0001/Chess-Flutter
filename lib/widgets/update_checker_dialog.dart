@@ -1,12 +1,13 @@
 import 'dart:io';
 import 'package:flutter/material.dart';
-import 'package:install_plugin/install_plugin.dart';
+import 'package:flutter/services.dart';
 import 'package:url_launcher/url_launcher.dart';
 import '../services/update_service.dart';
 
 /// mode='full' 从关于页面手动触发，显示测速过程
 /// mode='result' 后台静默测速完成，直接显示更新提示
 class UpdateCheckerDialog extends StatefulWidget {
+  static const platform = MethodChannel('com.jleoz.chess/stockfish');
   final String mode;
   final UpdateCheckResult? result;
   const UpdateCheckerDialog({super.key, this.mode = 'full', this.result});
@@ -107,16 +108,10 @@ class _UpdateCheckerDialogState extends State<UpdateCheckerDialog> {
 
   Future<void> _installApk(String path) async {
     try {
-      await InstallPlugin.installApk(path);
+      await UpdateCheckerDialog.platform.invokeMethod('installApk', {'path': path});
       if (mounted) Navigator.of(context).pop();
     } catch (_) {
-      // install_plugin 内部已处理 FileProvider，失败则尝试 url_launcher
-      try {
-        await launchUrl(Uri.file(path), mode: LaunchMode.externalApplication);
-        if (mounted) Navigator.of(context).pop();
-      } catch (_) {
-        if (mounted) setState(() => _downloadError = true);
-      }
+      if (mounted) setState(() => _downloadError = true);
     }
   }
 
