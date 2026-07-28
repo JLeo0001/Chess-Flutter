@@ -112,7 +112,7 @@ class _UpdateCheckerDialogState extends State<UpdateCheckerDialog> {
   }
 
   String get _title {
-    if (_step == 0) return '测速中…';
+    if (_step == 0) return '检查更新中…';
     if (_checkingFailed) return '检查失败';
     if (_step == 3) return '下载中';
     if (_isLatest) return '已是最新版本';
@@ -151,20 +151,21 @@ class _UpdateCheckerDialogState extends State<UpdateCheckerDialog> {
     return Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.start, children: [
       LinearProgressIndicator(value: _speedItems.isNotEmpty ? _testedCount / _speedItems.length : null),
       const SizedBox(height: 8),
-      Text('已测 $_testedCount / ${_speedItems.length} 个镜像',
-          style: TextStyle(fontSize: 12, color: cs.onSurfaceVariant)),
+      Text('正在选择最优下载线路…',
+          style: TextStyle(fontSize: 13, color: cs.onSurfaceVariant)),
       const SizedBox(height: 12),
       Flexible(
         child: Container(constraints: const BoxConstraints(maxHeight: 200), child: ListView.builder(
-          shrinkWrap: true, itemCount: _speedItems.length,
+          shrinkWrap: true, itemCount: _speedItems.length.clamp(0, 5),
           itemBuilder: (_, i) {
             final item = _speedItems[i];
-            final displayUrl = item.url.replaceAll('https://', '').replaceAll('http://', '');
             return Padding(padding: const EdgeInsets.symmetric(vertical: 2), child: Row(children: [
               Icon(item.tested ? (item.latencyMs != null ? Icons.check_circle_outline : Icons.error_outline) : Icons.schedule,
                   size: 14, color: item.tested ? (item.latencyMs != null ? Colors.green : Colors.red) : cs.onSurfaceVariant),
               const SizedBox(width: 6),
-              Expanded(child: Text(displayUrl, style: TextStyle(fontSize: 11, color: cs.onSurfaceVariant), overflow: TextOverflow.ellipsis)),
+              Text('节点 ${i + 1}',
+                  style: TextStyle(fontSize: 12, color: cs.onSurfaceVariant)),
+              const Spacer(),
               Text(item.latencyMs != null ? '${item.latencyMs}ms' : item.tested ? '超时' : '…',
                   style: TextStyle(fontSize: 11, fontWeight: FontWeight.w600,
                       color: item.latencyMs != null ? (item.latencyMs! < 500 ? Colors.green : item.latencyMs! < 1500 ? Colors.orange : Colors.red) : cs.onSurfaceVariant)),
@@ -177,11 +178,6 @@ class _UpdateCheckerDialogState extends State<UpdateCheckerDialog> {
 
   Widget _buildResult(ColorScheme cs) {
     return Column(mainAxisSize: MainAxisSize.min, children: [
-      if (_fastestProxy != null && _fastestLatency != null) ...[
-        Text('最快镜像: ${_fastestProxy!.replaceAll('https://', '')} (${_fastestLatency}ms)',
-            style: TextStyle(fontSize: 12, color: cs.primary)),
-        const SizedBox(height: 16),
-      ],
       if (_isLatest) ...[
         const Icon(Icons.check_circle, size: 48, color: Colors.green),
         const SizedBox(height: 12),
