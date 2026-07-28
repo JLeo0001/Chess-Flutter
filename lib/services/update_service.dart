@@ -138,6 +138,7 @@ class UpdateService {
     required String proxyBase,
     required String saveName,
     required void Function(double progress) onProgress,
+    Future<bool> Function()? shouldCancel,
   }) async {
     final bool isDirect = proxyBase == _directUrl;
     final downloadUrl = isDirect
@@ -147,12 +148,18 @@ class UpdateService {
       final dir = await getTemporaryDirectory();
       final file = File('${dir.path}/$saveName');
       final request = http.Request('GET', Uri.parse(downloadUrl));
-      final response = await request.send().timeout(const Duration(minutes: 30));
+      final http.StreamedResponse response = await request.send();
       if (response.statusCode != 200) return null;
       final total = response.contentLength ?? 0;
       var received = 0;
       final sink = file.openWrite();
       await for (final chunk in response.stream) {
+        if (shouldCancel != null && await shouldCancel()) {
+          await sink.close();
+          response.stream.drain();
+          file.deleteSync();
+          return null;
+        }
         received += chunk.length;
         sink.add(chunk);
         if (total > 0) onProgress(received / total);

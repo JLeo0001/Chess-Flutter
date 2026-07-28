@@ -31,6 +31,7 @@ flutter:
   assets:
     - assets/app_icon_256.png
     - assets/app_icon_512.png
+    - pubspec.yaml
 
 dependency_overrides:
   dartchess:

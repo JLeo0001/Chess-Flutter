@@ -83,15 +83,19 @@ class _UpdateCheckerDialogState extends State<UpdateCheckerDialog> {
     _applyResult(result);
   }
 
+  bool _cancelled = false;
+
   Future<void> _startDownload() async {
     if (_downloadUrl == null || _fastestProxy == null) return;
-    setState(() { _step = 3; _downloadProgress = 0; });
+    setState(() { _step = 3; _downloadProgress = 0; _cancelled = false; });
     final path = await UpdateService.downloadWithProgress(
       directUrl: _downloadUrl!, proxyBase: _fastestProxy!,
       saveName: _assetName ?? '更新包',
       onProgress: (p) { if (mounted) setState(() => _downloadProgress = p); },
+      shouldCancel: () async => _cancelled,
     );
     if (!mounted) return;
+    if (_cancelled) return;
     if (path != null) {
       _downloadedPath = path; _downloadProgress = 1.0; setState(() {});
       if (Platform.isAndroid) await _installApk(path);
@@ -234,7 +238,14 @@ class _UpdateCheckerDialogState extends State<UpdateCheckerDialog> {
   }
 
   List<Widget> _buildActions(ColorScheme cs) {
-    if (_step == 3 && _downloadedPath == null && !_downloadError) return [];
+    if (_step == 3 && _downloadedPath == null && !_downloadError) {
+      return [
+        TextButton(
+          onPressed: () { _cancelled = true; Navigator.of(context).pop(); },
+          child: const Text('取消下载'),
+        ),
+      ];
+    }
     if (_step == 2 && !_isLatest && _downloadUrl != null) {
       return [
         TextButton(onPressed: () => Navigator.of(context).pop(), child: const Text('以后再说')),
