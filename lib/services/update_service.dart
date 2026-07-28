@@ -21,6 +21,7 @@ class UpdateService {
     'https://fastgit.cc/',
     'https://ghfast.top/',
     'https://gh.monlor.com/',
+    'https://git.yylx.win/',
   ];
 
   static String? _currentVersion;
@@ -138,9 +139,11 @@ class UpdateService {
   }) async {
     final urlsToTry = <String>[];
     for (final proxy in raceProxies) {
-      // 跳过 _directUrl 占位符，避免拼出双重 https:// 的无效 URL
       if (proxy == _directUrl) continue;
-      urlsToTry.add('${proxy.endsWith('/') ? proxy : '$proxy/'}$directUrl');
+      final base = proxy.endsWith('/') ? proxy : '$proxy/';
+      // 两种格式：大多数代理要完整 https:// 前缀，少数只要 github.com/...
+      urlsToTry.add('${base}$directUrl');
+      urlsToTry.add('${base}${directUrl.replaceFirst('https://', '')}');
     }
     urlsToTry.add(directUrl); // GitHub 直连兜底
 
