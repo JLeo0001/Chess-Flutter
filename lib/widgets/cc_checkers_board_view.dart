@@ -87,7 +87,7 @@ class _CCBoardViewState extends State<CCBoardView>
             final dx = details.localPosition.dx - px;
             final dy = details.localPosition.dy - py;
             final d = dx * dx + dy * dy;
-            if (d < bestDist && d < cellR * cellR * 1.3) {
+            if (d < bestDist && d < cellR * cellR * 0.55) {
               bestDist = d;
               bestIdx = i;
             }
@@ -172,7 +172,8 @@ class _CCBoardPainter extends CustomPainter {
   @override
   void paint(Canvas canvas, Size size) {
     final w = size.width, h = size.height;
-    final pieceR = cellR * 0.85;
+    final holeR = cellR * 0.44;  // 孔半径（相邻孔心距≈1.73*cellR，0.44留出间距）
+    final pieceR = holeR * 0.82; // 棋子略小于孔
 
     // 背景
     canvas.drawRect(
@@ -186,12 +187,12 @@ class _CCBoardPainter extends CustomPainter {
       final px = ox + _hexToPixelX(p.q, p.r, cellR);
       final py = oy + _hexToPixelY(p.q, p.r, cellR);
       final holeColor = night ? const Color(0xFF1C1B1F) : const Color(0xFF8B6914);
-      canvas.drawCircle(Offset(px, py), cellR, Paint()..color = holeColor);
+      canvas.drawCircle(Offset(px, py), holeR, Paint()..color = holeColor);
       canvas.drawCircle(
-        Offset(px, py), cellR,
+        Offset(px, py), holeR,
         Paint()
           ..style = PaintingStyle.stroke
-          ..strokeWidth = 0.8
+          ..strokeWidth = 0.7
           ..color = night ? const Color(0xFF49454F) : const Color(0xFF6B4226),
       );
     }
@@ -204,7 +205,7 @@ class _CCBoardPainter extends CustomPainter {
         final p = game.positions[idx];
         final px = ox + _hexToPixelX(p.q, p.r, cellR);
         final py = oy + _hexToPixelY(p.q, p.r, cellR);
-        canvas.drawCircle(Offset(px, py), cellR * 0.92, campPaint);
+        canvas.drawCircle(Offset(px, py), holeR * 0.95, campPaint);
       }
     }
 
@@ -287,11 +288,11 @@ class _CCBoardPainter extends CustomPainter {
         final tx = ox + _hexToPixelX(tp.q, tp.r, cellR);
         final ty = oy + _hexToPixelY(tp.q, tp.r, cellR);
         canvas.drawCircle(
-          Offset(tx, ty), cellR * 0.7,
+          Offset(tx, ty), holeR * 0.9,
           Paint()..color = const Color(0x604CAF50),
         );
         canvas.drawCircle(
-          Offset(tx, ty), cellR * 0.7,
+          Offset(tx, ty), holeR * 0.9,
           Paint()
             ..style = PaintingStyle.stroke
             ..strokeWidth = 2
