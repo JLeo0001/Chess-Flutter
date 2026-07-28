@@ -24,6 +24,7 @@ import 'pages/doudizhu_game_page.dart';
 import 'pages/go_game_page.dart';
 import 'pages/spider_game_page.dart';
 import 'pages/cc_checkers_game_page.dart';
+import 'widgets/update_checker_dialog.dart';
 import 'third_party/circular_theme_reveal/circular_theme_reveal.dart';
 
 void main() {
@@ -78,6 +79,21 @@ class ChessApp extends StatefulWidget {
 
 class _ChessAppState extends State<ChessApp> {
   final _navigatorKey = GlobalKey<NavigatorState>();
+
+  @override
+  void initState() {
+    super.initState();
+    // 启动后 1 秒自动检查更新（有更新才弹窗）
+    Future.delayed(const Duration(seconds: 1), () {
+      if (mounted && _navigatorKey.currentContext != null) {
+        showDialog(
+          context: _navigatorKey.currentContext!,
+          barrierDismissible: false,
+          builder: (_) => const UpdateCheckerDialog(autoCheck: true),
+        );
+      }
+    });
+  }
 
   @override
   Widget build(BuildContext context) {

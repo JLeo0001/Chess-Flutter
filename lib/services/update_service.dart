@@ -1,0 +1,164 @@
+import 'dart:convert';
+import 'dart:io';
+import 'package:http/http.dart' as http;
+import 'package:path_provider/path_provider.dart';
+
+class UpdateService {
+  static const _currentVersion = '1.0.2';
+  static const _repoOwner = 'JLeo0001';
+  static const _repoName = 'Chess-Flutter';
+
+  static const proxyUrls = [
+    'https://gh-proxy.com/',
+    'https://ghproxy.net/',
+    'https://ghproxy.homeboyc.cn/',
+    'https://ghp.ci/',
+    'https://moeyy.cn/gh-proxy/',
+    'http://toolwa.com/github/',
+    'https://github.akams.cn/',
+    'https://gh.zwy.one/',
+    'https://raw.ihtw.moe/',
+    'https://gh.llkk.cc/',
+    'https://gh.xxooo.cf/',
+    'https://ghfile.geekertao.top/',
+    'https://ghproxy.cxkpro.top/',
+    'https://git.yylx.win/',
+    'https://gh.h233.eu.org/',
+    'https://cdn.crashmc.com/',
+    'https://cors.isteed.cc/',
+    'https://fastgit.cc/',
+    'https://ghfast.top/',
+    'https://gh.monlor.com/',
+    'https://mirror.ghproxy.com/',
+    'https://ghproxy.it/',
+    'https://gh.jasonzeng.dev/',
+  ];
+
+  static Future<List<ProxyResult>> speedTest({
+    void Function(int tested, int total, String url, int? latency)? onProgress,
+  }) async {
+    final results = <ProxyResult>[];
+    for (int i = 0; i < proxyUrls.length; i++) {
+      final url = proxyUrls[i];
+      onProgress?.call(i, proxyUrls.length, url, null);
+      final latency = await _pingUrl(url);
+      results.add(ProxyResult(url, latency));
+      onProgress?.call(i + 1, proxyUrls.length, url, latency);
+    }
+    results.sort((a, b) => (a.latencyMs ?? 99999).compareTo(b.latencyMs ?? 99999));
+    return results;
+  }
+
+  static Future<int?> _pingUrl(String url) async {
+    try {
+      final sw = Stopwatch()..start();
+      final r = await http.get(Uri.parse(url)).timeout(const Duration(seconds: 5));
+      sw.stop();
+      if (r.statusCode < 500) return sw.elapsedMilliseconds;
+    } catch (_) {}
+    return null;
+  }
+
+  static Future<ReleaseInfo?> fetchLatestRelease() async {
+    try {
+      final apiUrl = 'https://api.github.com/repos/$_repoOwner/$_repoName/releases/latest';
+      final r = await http.get(Uri.parse(apiUrl),
+          headers: {'Accept': 'application/vnd.github+json'}).timeout(const Duration(seconds: 8));
+      if (r.statusCode != 200) return null;
+      final data = jsonDecode(r.body) as Map<String, dynamic>;
+      final tagName = data['tag_name'] as String;
+      final version = tagName.startsWith('v') ? tagName.substring(1) : tagName;
+      final assets = (data['assets'] as List<dynamic>?)?.map((a) {
+        final m = a as Map<String, dynamic>;
+        return AssetInfo(name: m['name'] as String, downloadUrl: m['browser_download_url'] as String);
+      }).toList() ?? [];
+      return ReleaseInfo(version, tagName, assets);
+    } catch (_) {
+      return null;
+    }
+  }
+
+  static bool isNewer(String current, String latest) {
+    final cur = _parseVersion(current);
+    final lat = _parseVersion(latest);
+    for (int i = 0; i < 3; i++) {
+      if (lat[i] > cur[i]) return true;
+      if (lat[i] < cur[i]) return false;
+    }
+    return false;
+  }
+
+  static List<int> _parseVersion(String v) {
+    final parts = v.split('.').map((s) => int.tryParse(s) ?? 0).toList();
+    while (parts.length < 3) parts.add(0);
+    return parts;
+  }
+
+  static String get currentVersion => _currentVersion;
+
+  static AssetInfo? findPlatformAsset(List<AssetInfo> assets) {
+    if (Platform.isAndroid) {
+      for (final p in ['android-arm64', 'android-arm32', 'android-x64']) {
+        for (final a in assets) {
+          if (a.name.contains(p) && a.name.endsWith('.apk')) return a;
+        }
+      }
+    } else if (Platform.isWindows) {
+      for (final a in assets) { if (a.name.contains('windows-x64.zip')) return a; }
+    } else if (Platform.isLinux) {
+      for (final a in assets) { if (a.name.contains('linux-x64.AppImage')) return a; }
+    } else if (Platform.isMacOS) {
+      for (final a in assets) { if (a.name.contains('macos-x64.dmg')) return a; }
+    }
+    return null;
+  }
+
+  static Future<String?> downloadWithProgress({
+    required String directUrl,
+    required String proxyBase,
+    required String saveName,
+    required void Function(double progress) onProgress,
+  }) async {
+    final cleanProxy = proxyBase.endsWith('/') ? proxyBase : '$proxyBase/';
+    final uri = Uri.parse(directUrl);
+    final downloadUrl = '$cleanProxy${uri.host}${uri.path}';
+    try {
+      final dir = await getTemporaryDirectory();
+      final file = File('${dir.path}/$saveName');
+      final request = http.Request('GET', Uri.parse(downloadUrl));
+      final response = await request.send().timeout(const Duration(minutes: 30));
+      if (response.statusCode != 200) return null;
+      final total = response.contentLength ?? 0;
+      var received = 0;
+      final sink = file.openWrite();
+      await for (final chunk in response.stream) {
+        received += chunk.length;
+        sink.add(chunk);
+        if (total > 0) onProgress(received / total);
+      }
+      await sink.close();
+      return file.path;
+    } catch (_) {
+      return null;
+    }
+  }
+}
+
+class ProxyResult {
+  final String url;
+  final int? latencyMs;
+  ProxyResult(this.url, this.latencyMs);
+}
+
+class ReleaseInfo {
+  final String version;
+  final String tagName;
+  final List<AssetInfo> assets;
+  ReleaseInfo(this.version, this.tagName, this.assets);
+}
+
+class AssetInfo {
+  final String name;
+  final String downloadUrl;
+  AssetInfo({required this.name, required this.downloadUrl});
+}

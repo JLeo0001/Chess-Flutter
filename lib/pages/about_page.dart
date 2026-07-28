@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:url_launcher/url_launcher.dart';
+import '../widgets/update_checker_dialog.dart';
 
 /// 关于页面 — 使用 M3 ListTile + Card
 class AboutPage extends StatelessWidget {
@@ -67,6 +68,23 @@ class AboutPage extends StatelessWidget {
                 ),
               ],
             ]),
+          ),
+          const SizedBox(height: 20),
+
+          // 检查更新
+          _section('更新', cs),
+          Card(
+            child: ListTile(
+              leading: Icon(Icons.system_update, color: cs.primary),
+              title: const Text('检查更新'),
+              subtitle: const Text('检测并下载最新版本'),
+              trailing: Icon(Icons.chevron_right, color: cs.onSurfaceVariant),
+              onTap: () => showDialog(
+                context: context,
+                barrierDismissible: false,
+                builder: (_) => const UpdateCheckerDialog(),
+              ),
+            ),
           ),
           const SizedBox(height: 20),
 
