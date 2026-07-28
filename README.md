@@ -38,9 +38,9 @@
 
 | 架构 | 文件 | 适用设备 | 推荐 |
 |:---|:---|---|---:|
-| **arm64-v8a** | `Chess-Flutter-*-arm64.apk` | 2016年后安卓手机 | ⭐ **首选** |
-| armeabi-v7a | `Chess-Flutter-*-arm32.apk` | 老旧安卓手机 | |
-| x86_64 | `Chess-Flutter-*-x86_64.apk` | 模拟器 / Chromebook | |
+| **arm64-v8a** | `Chess-Flutter-*-android-arm64.apk` | 2016年后安卓手机 | ⭐ **首选** |
+| armeabi-v7a | `Chess-Flutter-*-android-arm32.apk` | 老旧安卓手机 | |
+| x86_64 | `Chess-Flutter-*-android-x64.apk` | 模拟器 / Chromebook | |
 
 <p align="center">
   <a href="https://github.com/JLeo0001/Chess-Flutter/releases/latest">
@@ -72,11 +72,11 @@
 
 | 平台 | 构建产物 | 获取方式 |
 |:---|:---|:---|
-| 🌐 **Web (PWA)** | `Chess-Flutter-*-web.zip` | CI artifact，解压后部署到任意静态服务器 |
+| 🌐 **Web (PWA)** | `Chess-Flutter-*-web-pwa.zip` | CI artifact，解压后部署到任意静态服务器 |
 | 🪟 **Windows** | `Chess-Flutter-*-windows-x64.zip` | 解压 → 运行 `chess_app.exe` |
-| 🐧 **Linux** | `*-x86_64.AppImage` / `*.deb` / `*.tar.gz` | **AppImage**: 双击运行 · **deb**: `sudo dpkg -i` · **tar.gz**: 解压运行 |
-| 🍎 **macOS** | `弈-*-macos.dmg` | 双击 → 拖到 Applications 文件夹 |
-| 📱 **iOS** | `弈-*-ios.app.zip` · `弈-*-ios.ipa` | **.app.zip**: Xcode → Devices 拖入 · **.ipa**: SideLoadly / AltStore |
+| 🐧 **Linux** | `Chess-Flutter-*-linux-x64.AppImage` / `Chess-Flutter-*-linux-amd64.deb` / `Chess-Flutter-*-linux-x64.tar.gz` | **AppImage**: 双击运行 · **deb**: `sudo dpkg -i` · **tar.gz**: 解压运行 |
+| 🍎 **macOS** | `Chess-Flutter-*-macos-x64.dmg` | 双击 → 拖到 Applications 文件夹 |
+| 📱 **iOS** | `Chess-Flutter-*-ios-app.zip` · `Chess-Flutter-*-ios-ipa.ipa` | **.app.zip**: Xcode → Devices 拖入 · **.ipa**: SideLoadly / AltStore |
 
 > 所有平台的构建产物均可从 **[GitHub Actions](https://github.com/JLeo0001/Chess-Flutter/actions/workflows/build.yml)** 的 CI artifact 下载。<br>
 > 正式发布版本见 **[GitHub Releases](https://github.com/JLeo0001/Chess-Flutter/releases)**。
@@ -143,7 +143,7 @@
 | **牌类引擎** | poker_solver · card_game |
 | **日夜切换** | Custom CircularReveal (800ms) |
 | **CI/CD** | GitHub Actions（Android / Web / Windows / Linux / macOS / iOS 自动构建） |
-| **发布产物** | APK · PWA ZIP · Windows ZIP · AppImage / deb / tar.gz · DMG · iOS app / IPA |
+| **发布产物** | Android APK · Web PWA ZIP · Windows ZIP · Linux AppImage / deb / tar.gz · macOS DMG · iOS app ZIP / IPA |
 | **最低支持** | Android 8.0 · iOS 13.0 · Windows 10 · macOS 12 · Linux GTK3 |
 
 ### 跨平台架构

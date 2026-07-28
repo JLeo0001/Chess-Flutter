@@ -42,3 +42,28 @@ build/windows/runner/Release
 ```
 
 The workflow should package `build/windows/x64/runner/Release/*`, with a fallback to the older path and diagnostics that list discovered `Release` directories if neither exists.
+
+## Release package naming convention
+
+CI package filenames should use one consistent pattern:
+
+```text
+Chess-Flutter-${version}-${platform}-${variant}.${ext}
+```
+
+Examples:
+
+- `Chess-Flutter-v1.0.2+2-android-arm64.apk`
+- `Chess-Flutter-v1.0.2+2-android-arm32.apk`
+- `Chess-Flutter-v1.0.2+2-android-x64.apk`
+- `Chess-Flutter-v1.0.2+2-web-pwa.zip`
+- `Chess-Flutter-v1.0.2+2-windows-x64.zip`
+- `Chess-Flutter-v1.0.2+2-linux-x64.AppImage`
+- `Chess-Flutter-v1.0.2+2-linux-amd64.deb`
+- `Chess-Flutter-v1.0.2+2-linux-x64.tar.gz`
+- `Chess-Flutter-v1.0.2+2-macos-x64.dmg`
+- `Chess-Flutter-v1.0.2+2-ios-app.zip`
+- `Chess-Flutter-v1.0.2+2-ios-ipa.ipa`
+```
+
+Android universal APK is intentionally not documented or uploaded; release downloads list per-ABI APKs only.
