@@ -1,4 +1,3 @@
-import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
 import 'package:flutter/services.dart';
@@ -55,25 +54,27 @@ class UpdateService {
     final release = await fetchLatestRelease();
     if (release == null) return null;
     if (!isNewer(curVer, release.version)) return null;
-    final results = <_ProxyLatency>[];
-    for (final url in proxyUrls) {
-      final t = await _pingUrl(url);
-      results.add(_ProxyLatency(url, t));
-    }
-    results.sort((a, b) => (a.latency ?? 999999).compareTo(b.latency ?? 999999));
-    final topProxies = results
-        .where((r) => r.latency != null)
-        .take(3)
-        .map((r) => r.url)
-        .toList();
+    final fastest = await _findFastestProxy();
     final asset = findPlatformAsset(release.assets);
     return UpdateCheckResult(
-      fastestProxy: topProxies.isNotEmpty ? topProxies.first : _directUrl,
+      fastestProxy: fastest ?? _directUrl,
       version: release.version,
-      topProxies: topProxies,
       assetName: asset?.name,
       downloadUrl: asset?.downloadUrl,
     );
+  }
+
+  static Future<String?> _findFastestProxy() async {
+    String? bestUrl;
+    int? bestTime;
+    for (final url in proxyUrls) {
+      final t = await _pingUrl(url);
+      if (t != null && (bestTime == null || t < bestTime)) {
+        bestTime = t;
+        bestUrl = url;
+      }
+    }
+    return bestUrl;
   }
 
   static Future<int?> _pingUrl(String url) async {
@@ -136,7 +137,7 @@ class UpdateService {
     return null;
   }
 
-  /// 渐进式竞速下载：先跑最快2路，3秒后进度<15%再加2路，省带宽
+  /// 单线下载：直接用最快代理，失败回退 GitHub 直连
   static Future<String?> downloadWithProgress({
     required String directUrl,
     required List<String> raceProxies,
@@ -144,99 +145,46 @@ class UpdateService {
     required void Function(double progress) onProgress,
     Future<bool> Function()? shouldCancel,
   }) async {
-    // 构建所有候选 URL：代理在前，GitHub CDN 直连在后
-    final allUrls = <String>[];
+    final urlsToTry = <String>[];
     for (final proxy in raceProxies) {
-      allUrls.add('${proxy.endsWith('/') ? proxy : '$proxy/'}$directUrl');
+      urlsToTry.add('${proxy.endsWith('/') ? proxy : '$proxy/'}$directUrl');
     }
-    allUrls.add(directUrl); // GitHub CDN (objects.githubusercontent.com)
+    urlsToTry.add(directUrl); // GitHub 直连兜底
 
     final dir = await getTemporaryDirectory();
-    final completer = Completer<String?>();
-    final finished = <int>{}; // 记录哪些索引已完成/失败
-    double _bestProgress = 0;
-    int activeCount = allUrls.length;
-    bool _secondWaveFired = false;
-
-    Future<void> race(int index) async {
-      if (completer.isCompleted) return;
-      final url = allUrls[index];
+    for (final url in urlsToTry) {
+      if (shouldCancel != null && await shouldCancel()) return null;
       try {
-        final file = File('${dir.path}/${saveName}_$index');
+        final file = File('${dir.path}/$saveName');
         final request = http.Request('GET', Uri.parse(url));
         final http.StreamedResponse response = await request.send().timeout(
-          const Duration(seconds: 120),
-          onTimeout: () => throw Exception('timeout'),
+          const Duration(seconds: 8),
+          onTimeout: () => throw Exception('connect timeout'),
         );
         if (response.statusCode != 200 && response.statusCode != 302 && response.statusCode != 301) {
-          throw Exception('bad status ${response.statusCode}');
+          continue;
         }
         final total = response.contentLength ?? 0;
         var received = 0;
         final sink = file.openWrite();
         await for (final chunk in response.stream) {
-          if (completer.isCompleted) {
-            await sink.close();
-            response.stream.drain();
-            file.deleteSync();
-            return;
-          }
           if (shouldCancel != null && await shouldCancel()) {
             await sink.close();
             response.stream.drain();
             file.deleteSync();
-            if (!completer.isCompleted) completer.complete(null);
-            return;
+            return null;
           }
           received += chunk.length;
           sink.add(chunk);
-          if (total > 0) {
-            final p = received / total;
-            if (p > _bestProgress) {
-              _bestProgress = p;
-              onProgress(p);
-            }
-          }
+          if (total > 0) onProgress(received / total);
         }
         await sink.close();
-        if (!completer.isCompleted) {
-          final finalFile = File('${dir.path}/$saveName');
-          if (finalFile.existsSync()) finalFile.deleteSync();
-          file.renameSync(finalFile.path);
-          completer.complete(finalFile.path);
-        } else {
-          file.deleteSync();
-        }
+        return file.path;
       } catch (_) {
-        if (!completer.isCompleted) {
-          finished.add(index);
-          activeCount--;
-          if (activeCount <= 0) completer.complete(null);
-        }
+        continue;
       }
     }
-
-    // 第一波：前 2 路（如果总共不到 2 路就全跑）
-    final firstWave = allUrls.length >= 2 ? 2 : allUrls.length;
-    for (int i = 0; i < firstWave; i++) {
-      race(i);
-    }
-
-    // 3 秒后检查：如果进度不足 15% 且还有待命 URL，启动第二波
-    if (allUrls.length > 2) {
-      Future.delayed(const Duration(seconds: 3), () {
-        if (!completer.isCompleted && !_secondWaveFired && _bestProgress < 0.15) {
-          _secondWaveFired = true;
-          for (int i = firstWave; i < allUrls.length; i++) {
-            if (!finished.contains(i)) {
-              race(i);
-            }
-          }
-        }
-      });
-    }
-
-    return completer.future;
+    return null;
   }
 
   static Future<UpdateCheckResult?> fullCheck({
@@ -245,30 +193,24 @@ class UpdateService {
     final release = await fetchLatestRelease();
     if (release == null) return null;
     final curVer = await currentVersion;
-    final results = <_ProxyLatency>[];
+    String? fastestUrl;
+    int? fastestLatency;
     final total = proxyUrls.length;
     for (int i = 0; i < total; i++) {
       final url = proxyUrls[i];
       onProgress?.call(i, total, url, null);
       final t = await _pingUrl(url);
       onProgress?.call(i + 1, total, url, t);
-      results.add(_ProxyLatency(url, t));
+      if (t != null && (fastestLatency == null || t < fastestLatency)) {
+        fastestLatency = t;
+        fastestUrl = url;
+      }
     }
-    // 按延迟排序，取前 3 个可达的
-    results.sort((a, b) => (a.latency ?? 999999).compareTo(b.latency ?? 999999));
-    final topProxies = results
-        .where((r) => r.latency != null)
-        .take(3)
-        .map((r) => r.url)
-        .toList();
-    final fastestUrl = topProxies.isNotEmpty ? topProxies.first : null;
-    final fastestLatency = results.isNotEmpty ? results.first.latency : null;
     final hasUpdate = isNewer(curVer, release.version);
     final asset = hasUpdate ? findPlatformAsset(release.assets) : null;
     return UpdateCheckResult(
       fastestProxy: fastestUrl ?? _directUrl,
       fastestLatency: fastestLatency,
-      topProxies: topProxies,
       version: release.version,
       isLatest: !hasUpdate,
       assetName: asset?.name,
@@ -280,7 +222,6 @@ class UpdateService {
 class UpdateCheckResult {
   final String fastestProxy;
   final int? fastestLatency;
-  final List<String> topProxies;
   final String version;
   final bool isLatest;
   final String? assetName;
@@ -288,18 +229,11 @@ class UpdateCheckResult {
   UpdateCheckResult({
     required this.fastestProxy,
     this.fastestLatency,
-    this.topProxies = const [],
     required this.version,
     this.isLatest = false,
     this.assetName,
     this.downloadUrl,
   });
-}
-
-class ProxyResult {
-  final String url;
-  final int? latencyMs;
-  ProxyResult(this.url, this.latencyMs);
 }
 
 class ReleaseInfo {
@@ -313,10 +247,4 @@ class AssetInfo {
   final String name;
   final String downloadUrl;
   AssetInfo({required this.name, required this.downloadUrl});
-}
-
-class _ProxyLatency {
-  final String url;
-  final int? latency;
-  _ProxyLatency(this.url, this.latency);
 }
