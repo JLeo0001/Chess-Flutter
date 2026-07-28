@@ -53,15 +53,33 @@
 
 ### 其他平台
 
+<p align="center">
+  <a href="https://github.com/JLeo0001/Chess-Flutter/actions/workflows/build.yml">
+    <img src="https://img.shields.io/badge/Web-PWA-4285F4?style=for-the-badge&logo=googlechrome&logoColor=white" alt="Web PWA"/>
+  </a>
+  <a href="https://github.com/JLeo0001/Chess-Flutter/actions/workflows/build.yml">
+    <img src="https://img.shields.io/badge/Windows-x64-0078D6?style=for-the-badge&logo=windows&logoColor=white" alt="Windows x64"/>
+  </a>
+  <a href="https://github.com/JLeo0001/Chess-Flutter/actions/workflows/build.yml">
+    <img src="https://img.shields.io/badge/Linux-AppImage%20%7C%20deb-E95420?style=for-the-badge&logo=linux&logoColor=white" alt="Linux"/>
+  </a>
+  <a href="https://github.com/JLeo0001/Chess-Flutter/actions/workflows/build.yml">
+    <img src="https://img.shields.io/badge/macOS-DMG-000000?style=for-the-badge&logo=apple&logoColor=white" alt="macOS DMG"/>
+  </a>
+  <a href="https://github.com/JLeo0001/Chess-Flutter/actions/workflows/build.yml">
+    <img src="https://img.shields.io/badge/iOS-.app%20%7C%20.ipa-000000?style=for-the-badge&logo=apple&logoColor=white" alt="iOS app and ipa"/>
+  </a>
+</p>
+
 | 平台 | 构建产物 | 获取方式 |
-|:---|:---|---:|
-| 🌐 **Web (PWA)** | `Chess-Flutter-*-web.zip` | CI artifact，解压部署到任意静态服务器 |
+|:---|:---|:---|
+| 🌐 **Web (PWA)** | `Chess-Flutter-*-web.zip` | CI artifact，解压后部署到任意静态服务器 |
+| <img src="https://cdn.simpleicons.org/windows/0078D6" width="18" alt="Windows"/> **Windows** | `Chess-Flutter-*-windows-x64.zip` | 解压 → 运行 `chess_app.exe` |
 | 🐧 **Linux** | `*-x86_64.AppImage` / `*.deb` / `*.tar.gz` | **AppImage**: 双击运行 · **deb**: `sudo dpkg -i` · **tar.gz**: 解压运行 |
-| 🪟 **Windows** | `Chess-Flutter-*-windows-x64.zip` | 解压 → 运行 `chess_app.exe` |
 | 🍎 **macOS** | `弈-*-macos.dmg` | 双击 → 拖到 Applications 文件夹 |
 | 📱 **iOS** | `弈-*-ios.app.zip` · `弈-*-ios.ipa` | **.app.zip**: Xcode → Devices 拖入 · **.ipa**: SideLoadly / AltStore |
 
-> 所有平台的构建产物均可从 **[GitHub Actions](https://github.com/JLeo0001/Chess-Flutter/actions)** 的 CI artifact 下载。  
+> 所有平台的构建产物均可从 **[GitHub Actions](https://github.com/JLeo0001/Chess-Flutter/actions/workflows/build.yml)** 的 CI artifact 下载。<br>
 > 正式发布版本见 **[GitHub Releases](https://github.com/JLeo0001/Chess-Flutter/releases)**。
 
 ---
@@ -125,7 +143,8 @@
 | **国际象棋** | dartchess · chessground · LiChess Cloud Eval API |
 | **牌类引擎** | poker_solver · card_game |
 | **日夜切换** | Custom CircularReveal (800ms) |
-| **CI/CD** | GitHub Actions（6 平台并行构建） |
+| **CI/CD** | GitHub Actions（Android / Web / Windows / Linux / macOS / iOS 自动构建） |
+| **发布产物** | APK · PWA ZIP · Windows ZIP · AppImage / deb / tar.gz · DMG · iOS app / IPA |
 | **最低支持** | Android 8.0 · iOS 13.0 · Windows 10 · macOS 12 · Linux GTK3 |
 
 ### 跨平台架构
@@ -175,7 +194,7 @@ flutter run
 | **Android** | `flutter build apk --release --split-per-abi` | — |
 | **iOS** | `cd ios && pod install && cd .. && flutter build ios --release --no-codesign` | macOS + Xcode |
 | **Web** | `flutter build web --release` | — |
-| **Windows** | `flutter build windows --release` | Visual Studio 2022 |
+| **Windows** | `flutter build windows --release` | Visual Studio 2022 + C++ 桌面工作负载 |
 | **Linux** | `flutter build linux --release` | `cmake ninja-build libgtk-3-dev` |
 | **macOS** | `flutter build macos --release` | macOS + Xcode |
 
