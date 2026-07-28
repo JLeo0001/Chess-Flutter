@@ -351,12 +351,14 @@ jobs:
           retention-days: 30
 
   ##############################################################################
-  #  Windows  (windows-latest)
+  #  Windows  (pin to VS 2022 runner for Flutter 3.27 compatibility)
   ##############################################################################
   windows:
     name: 🪟 Windows (x64)
     needs: version
-    runs-on: windows-latest
+    # Flutter 3.27's Windows toolchain predates Visual Studio 2026.
+    # Pin to windows-2022 so Visual Studio 2022 and its CMake generator are available.
+    runs-on: windows-2022
     steps:
       - uses: actions/checkout@v5
 
@@ -380,8 +382,8 @@ jobs:
       - name: Build Windows (release)
         run: |
           # Flutter 3.27 hardcodes -G "Visual Studio 16 2019".
-          # windows-latest may have only a newer Visual Studio installed, so
-          # rewrite Flutter's CMake generator argument to the installed VS major.
+          # The job is pinned to windows-2022; rewrite Flutter's generator
+          # argument to the installed Visual Studio generator (normally VS 2022).
           $vsPath = & "${env:ProgramFiles(x86)}\Microsoft Visual Studio\Installer\vswhere.exe" `
             -latest -property installationPath
           Write-Host "VS installed at: $vsPath"

@@ -7,9 +7,9 @@
 Setting only `CMAKE_GENERATOR_INSTANCE` fails with:
 > "Warning: Environment variable CMAKE_GENERATOR_INSTANCE will be ignored, because CMAKE_GENERATOR is not set."
 
-Renaming `cmake.exe` and replacing Flutter's generator with a fixed `Visual Studio 17 2022` is also brittle when the runner only has VS 2026.
+Renaming `cmake.exe` and replacing Flutter's generator with a fixed `Visual Studio 17 2022` is brittle if `windows-latest` moves ahead to a runner image whose Visual Studio/CMake combination is not supported by Flutter 3.27.
 
-**Fix:** Detect the installed Visual Studio major version from the `vswhere` installation path, map it to the matching CMake generator, set both CMake environment variables, and use a `cmake.bat` wrapper to rewrite Flutter's hardcoded `Visual Studio 16 2019` argument:
+**Fix:** Pin the Windows job to `windows-2022`, where Visual Studio 2022 is available, then detect the installed Visual Studio major version from the `vswhere` installation path, map it to the matching CMake generator, set both CMake environment variables, and use a `cmake.bat` wrapper to rewrite Flutter's hardcoded `Visual Studio 16 2019` argument:
 
 ```powershell
 $vsMajor = [int](Split-Path (Split-Path $vsPath -Parent) -Leaf)
