@@ -380,14 +380,36 @@ jobs:
       - name: Build Windows (release)
         run: |
           # VS 2026 装了但没有 VS 2019/2022 generator。
-          # CMake 的 CMAKE_GENERATOR_INSTANCE 仅在 CMAKE_GENERATOR 环境变量
-          # 设置时才会生效（env var，不是 -G 命令行参数）。
-          # Flutter 硬编码了 -G "Visual Studio 16 2019"，所以这里用同样的值。
+          # Flutter 硬编码 -G "Visual Studio 16 2019"，但这个 generator
+          # 不认识 VS 2026 实例路径。我们在 PATH 里插一个 cmake.bat 包装器，
+          # 透明地把 generator 换成 Visual Studio 17 2022（CMake 内置支持）。
           $vsPath = & "${env:ProgramFiles(x86)}\Microsoft Visual Studio\Installer\vswhere.exe" `
             -latest -property installationPath
           Write-Host "VS installed at: $vsPath"
-          $env:CMAKE_GENERATOR = "Visual Studio 16 2019"
+
+          # 定位真实 cmake.exe
+          $realCmake = (Get-Command cmake).Source
+          Write-Host "Real cmake: $realCmake"
+
+          # 创建包装器目录（放在 PATH 最前面）
+          $wrapDir = "$env:RUNNER_TEMP\cmake-wrap"
+          New-Item -ItemType Directory -Force -Path $wrapDir | Out-Null
+
+          # cmake.bat 包装器：替换 generator，转发其余参数
+          @"
+          @echo off
+          setlocal enabledelayedexpansion
+          set "args=%*"
+          set "args=!args:Visual Studio 16 2019=Visual Studio 17 2022!"
+          "$realCmake" !args!
+          "@ | Out-File -FilePath "$wrapDir\cmake.bat" -Encoding ASCII -Force
+
+          # 插入包装器目录到 PATH 最前面
+          $env:PATH = "$wrapDir;$env:PATH"
+
+          # CMAKE_GENERATOR_INSTANCE 指向 VS 2026
           $env:CMAKE_GENERATOR_INSTANCE = $vsPath
+
           flutter build windows --release
 
       - name: Package with ZIP
