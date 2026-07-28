@@ -453,6 +453,7 @@ jobs:
       matrix:
         target:
           - name: 🍎 macOS (x64)
+            platform: macos
             build: flutter build macos --release
             upload: macos-x64-${{ needs.version.outputs.tag }}
             path: dist/弈-${{ needs.version.outputs.tag }}-macos.dmg
@@ -468,11 +469,14 @@ jobs:
                 -ov -format UDZO "dist/弈-${{ needs.version.outputs.tag }}-macos.dmg"
               rm -rf dist/dmg
           - name: 📱 iOS (arm64)
+            platform: ios
             build: |
               cd ios && pod install && cd ..
               flutter build ios --release --no-codesign
-            upload: ios-${{ needs.version.outputs.tag }}
-            path: dist/
+            app_upload: ios-app-${{ needs.version.outputs.tag }}
+            app_path: dist/弈-${{ needs.version.outputs.tag }}-ios.app.zip
+            ipa_upload: ios-ipa-${{ needs.version.outputs.tag }}
+            ipa_path: dist/弈-${{ needs.version.outputs.tag }}-ios.ipa
             pkg: |
               # .app（开发者用 Xcode / ios-deploy 安装）
               ditto -c -k --keepParent build/ios/iphoneos/Runner.app \
@@ -508,10 +512,29 @@ jobs:
           ${{ matrix.target.build }}
           ${{ matrix.target.pkg }}
 
-      - name: Upload artifact
+      - name: Upload macOS artifact
+        if: matrix.target.platform == 'macos'
         uses: actions/upload-artifact@v5
         with:
           name: ${{ matrix.target.upload }}
           path: ${{ matrix.target.path }}
+          compression-level: 0
+          retention-days: 30
+
+      - name: Upload iOS .app artifact
+        if: matrix.target.platform == 'ios'
+        uses: actions/upload-artifact@v5
+        with:
+          name: ${{ matrix.target.app_upload }}
+          path: ${{ matrix.target.app_path }}
+          compression-level: 0
+          retention-days: 30
+
+      - name: Upload iOS .ipa artifact
+        if: matrix.target.platform == 'ios'
+        uses: actions/upload-artifact@v5
+        with:
+          name: ${{ matrix.target.ipa_upload }}
+          path: ${{ matrix.target.ipa_path }}
           compression-level: 0
           retention-days: 30
