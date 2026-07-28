@@ -249,6 +249,10 @@ class _UpdateCheckerDialogState extends State<UpdateCheckerDialog> {
     if (_step == 2 && !_isLatest && _downloadUrl != null) {
       return [
         TextButton(onPressed: () => Navigator.of(context).pop(), child: const Text('以后再说')),
+        TextButton(
+          onPressed: () => launchUrl(Uri.parse('https://github.com/JLeo0001/Chess-Flutter/releases'), mode: LaunchMode.externalApplication),
+          child: const Text('发布页下载'),
+        ),
         FilledButton(onPressed: _startDownload, child: const Text('立即下载')),
       ];
     }
