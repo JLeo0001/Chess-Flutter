@@ -55,6 +55,7 @@ class UpdateService {
       version: release.version,
       assetName: asset?.name,
       downloadUrl: asset?.downloadUrl,
+      assetSize: asset?.size ?? 0,
     );
   }
 
@@ -92,7 +93,11 @@ class UpdateService {
       final version = tagName.startsWith('v') ? tagName.substring(1) : tagName;
       final assets = (data['assets'] as List<dynamic>?)?.map((a) {
         final m = a as Map<String, dynamic>;
-        return AssetInfo(name: m['name'] as String, downloadUrl: m['browser_download_url'] as String);
+        return AssetInfo(
+          name: m['name'] as String,
+          downloadUrl: m['browser_download_url'] as String,
+          size: (m['size'] as num?)?.toInt() ?? 0,
+        );
       }).toList() ?? [];
       return ReleaseInfo(version, tagName, assets);
     } catch (_) { return null; }
@@ -138,6 +143,7 @@ class UpdateService {
     required String saveName,
     required void Function(double progress) onProgress,
     Future<bool> Function()? shouldCancel,
+    int expectedSize = 0,
   }) async {
     final urlsToTry = <String>[];
     for (final proxy in raceProxies) {
@@ -152,6 +158,7 @@ class UpdateService {
     final dir = await getTemporaryDirectory();
     for (final url in urlsToTry) {
       if (shouldCancel != null && await shouldCancel()) return null;
+      onProgress(0); // 重置进度
       try {
         final file = File('${dir.path}/$saveName');
         final request = http.Request('GET', Uri.parse(url));
@@ -162,7 +169,10 @@ class UpdateService {
         if (response.statusCode != 200 && response.statusCode != 302 && response.statusCode != 301) {
           continue;
         }
-        final total = response.contentLength ?? 0;
+        final contentTotal = response.contentLength;
+        final total = (contentTotal != null && contentTotal > 0)
+            ? contentTotal
+            : expectedSize;
         var received = 0;
         final sink = file.openWrite();
         await for (final chunk in response.stream) {
@@ -213,6 +223,7 @@ class UpdateService {
       isLatest: !hasUpdate,
       assetName: asset?.name,
       downloadUrl: asset?.downloadUrl,
+      assetSize: asset?.size ?? 0,
     );
   }
 }
@@ -224,6 +235,7 @@ class UpdateCheckResult {
   final bool isLatest;
   final String? assetName;
   final String? downloadUrl;
+  final int assetSize;
   UpdateCheckResult({
     this.fastestProxy,
     this.fastestLatency,
@@ -231,6 +243,7 @@ class UpdateCheckResult {
     this.isLatest = false,
     this.assetName,
     this.downloadUrl,
+    this.assetSize = 0,
   });
 }
 
@@ -244,5 +257,6 @@ class ReleaseInfo {
 class AssetInfo {
   final String name;
   final String downloadUrl;
-  AssetInfo({required this.name, required this.downloadUrl});
+  final int size;
+  AssetInfo({required this.name, required this.downloadUrl, this.size = 0});
 }

@@ -24,6 +24,7 @@ class _UpdateCheckerDialogState extends State<UpdateCheckerDialog> {
   String? _latestVersion;
   String? _downloadUrl;
   String? _assetName;
+  int _assetSize = 0;
   double _downloadProgress = 0;
   String? _downloadedPath;
   bool _downloadError = false;
@@ -67,6 +68,7 @@ class _UpdateCheckerDialogState extends State<UpdateCheckerDialog> {
     _isLatest = r.isLatest;
     _downloadUrl = r.downloadUrl;
     _assetName = r.assetName;
+    _assetSize = r.assetSize;
     _step = 2;
     if (mounted) setState(() {});
   }
@@ -108,6 +110,7 @@ class _UpdateCheckerDialogState extends State<UpdateCheckerDialog> {
       directUrl: _downloadUrl!,
       raceProxies: _fastestProxy != null ? [_fastestProxy!] : [],
       saveName: _assetName ?? '更新包',
+      expectedSize: _assetSize,
       onProgress: (p) { if (mounted) setState(() => _downloadProgress = p); },
       shouldCancel: () async => _cancelled,
     );
