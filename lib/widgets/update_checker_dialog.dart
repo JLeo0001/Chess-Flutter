@@ -32,7 +32,19 @@ class _UpdateCheckerDialogState extends State<UpdateCheckerDialog> {
   String? _localVersion;
 
   @override
-  void initState() {
+  void dispose() {
+    _cleanupDownloadedFile();
+    super.dispose();
+  }
+
+  void _cleanupDownloadedFile() {
+    if (_downloadedPath != null) {
+      try {
+        File(_downloadedPath!).deleteSync();
+      } catch (_) {}
+      _downloadedPath = null;
+    }
+  }
     super.initState();
     UpdateService.currentVersion.then((v) {
       _localVersion = v;
@@ -97,7 +109,10 @@ class _UpdateCheckerDialogState extends State<UpdateCheckerDialog> {
       shouldCancel: () async => _cancelled,
     );
     if (!mounted) return;
-    if (_cancelled) return;
+    if (_cancelled) {
+      _cleanupDownloadedFile();
+      return;
+    }
     if (path != null) {
       _downloadedPath = path; _downloadProgress = 1.0; setState(() {});
       if (Platform.isAndroid) await _installApk(path);
@@ -237,7 +252,7 @@ class _UpdateCheckerDialogState extends State<UpdateCheckerDialog> {
     if (_step == 3 && _downloadedPath == null && !_downloadError) {
       return [
         TextButton(
-          onPressed: () { _cancelled = true; Navigator.of(context).pop(); },
+          onPressed: () { _cancelled = true; _cleanupDownloadedFile(); Navigator.of(context).pop(); },
           child: const Text('取消下载'),
         ),
       ];
