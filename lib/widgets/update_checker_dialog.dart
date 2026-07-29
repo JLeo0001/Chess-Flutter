@@ -45,6 +45,9 @@ class _UpdateCheckerDialogState extends State<UpdateCheckerDialog> {
       _downloadedPath = null;
     }
   }
+
+  @override
+  void initState() {
     super.initState();
     UpdateService.currentVersion.then((v) {
       _localVersion = v;
