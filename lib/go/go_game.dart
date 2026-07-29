@@ -89,8 +89,25 @@ class GoGame {
       prevCapturedBlack: prevCaptB, prevCapturedWhite: prevCaptW,
     ));
     _passCount = 0;
+
+    // 棋盘填满 → 自动终局
+    if (_isBoardFull()) {
+      _gameOver = true;
+      _winner = _determineWinner();
+      _listener?.onGameOver(_winner, 0, 0, 0, 0);
+      return true;
+    }
+
     _listener?.onStonePlaced(row, col, _currentPlayer);
     _currentPlayer = (_currentPlayer == black) ? white : black;
+
+    // 对方无子可下 → 自动终局
+    if (validMoves(_currentPlayer).isEmpty) {
+      _gameOver = true;
+      _winner = _determineWinner();
+      _listener?.onGameOver(_winner, 0, 0, 0, 0);
+    }
+
     return true;
   }
 
@@ -114,6 +131,12 @@ class GoGame {
       _listener?.onGameOver(_winner, 0, 0, 0, 0);
     } else {
       _currentPlayer = (_currentPlayer == black) ? white : black;
+      // 对方无子可下 → 自动终局
+      if (validMoves(_currentPlayer).isEmpty) {
+        _gameOver = true;
+        _winner = _determineWinner();
+        _listener?.onGameOver(_winner, 0, 0, 0, 0);
+      }
     }
   }
 
@@ -520,6 +543,15 @@ class GoGame {
     _passCount = 0; _moveNumber = 0;
     _koRow = -1; _koCol = -1;
     _deadStones.clear(); _moveHistory.clear();
+  }
+
+  bool _isBoardFull() {
+    for (int r = 0; r < boardSize; r++) {
+      for (int c = 0; c < boardSize; c++) {
+        if (_board[r][c] == empty) return false;
+      }
+    }
+    return true;
   }
 
   bool inBounds(int r, int c) => r >= 0 && r < boardSize && c >= 0 && c < boardSize;

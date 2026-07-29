@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
@@ -22,11 +23,17 @@ import 'pages/uno_game_page.dart';
 import 'pages/doudizhu_game_page.dart';
 import 'pages/go_game_page.dart';
 import 'pages/spider_game_page.dart';
-import 'widgets/theme_reveal.dart';
+import 'pages/cc_checkers_game_page.dart';
+import 'services/update_service.dart';
+import 'widgets/update_checker_dialog.dart';
+import 'third_party/circular_theme_reveal/circular_theme_reveal.dart';
 
 void main() {
   WidgetsFlutterBinding.ensureInitialized();
-  SystemChrome.setEnabledSystemUIMode(SystemUiMode.edgeToEdge);
+  // 仅在 Android / iOS 上设置沉浸式状态栏
+  if (!kIsWeb) {
+    SystemChrome.setEnabledSystemUIMode(SystemUiMode.edgeToEdge);
+  }
 
   // 日志系统（持久化到文件）
   final lp = LogProvider.ensure();
@@ -35,10 +42,10 @@ void main() {
   // 拦截所有 debugPrint / 错误
   FlutterError.onError = (details) {
     FlutterError.presentError(details);
-    lp.e('[FLUTTER]', '${details.exception}\\n${details.stack}');
+    lp.e('[FLUTTER]', '${details.exception}\n${details.stack}');
   };
   WidgetsBinding.instance.platformDispatcher.onError = (error, stack) {
-    lp.e('[PLATFORM]', '$error\\n$stack');
+    lp.e('[PLATFORM]', '$error\n$stack');
     return true;
   };
   final originalDebugPrint = debugPrint;
@@ -74,10 +81,20 @@ class ChessApp extends StatefulWidget {
 class _ChessAppState extends State<ChessApp> {
   final _navigatorKey = GlobalKey<NavigatorState>();
 
-  void _toggleTheme(BuildContext context) {
-    final newMode = context.read<ThemeProvider>().toggleManual();
-    final labels = {ThemeMode.light: '日间', ThemeMode.dark: '夜间', ThemeMode.system: '系统'};
-    log('SETTINGS', '手动切换主题 → ${labels[newMode] ?? newMode}');
+  @override
+  void initState() {
+    super.initState();
+    // 启动1秒后后台静默检查更新（无新版本不弹窗）
+    Future.delayed(const Duration(seconds: 1), () async {
+      final result = await UpdateService.silentCheck();
+      if (result != null && mounted && _navigatorKey.currentContext != null) {
+        showDialog(
+          context: _navigatorKey.currentContext!,
+          barrierDismissible: false,
+          builder: (_) => UpdateCheckerDialog(mode: 'result', result: result),
+        );
+      }
+    });
   }
 
   @override
@@ -85,14 +102,13 @@ class _ChessAppState extends State<ChessApp> {
     final themeProvider = context.watch<ThemeProvider>();
     return DynamicColorBuilder(
       builder: (lightScheme, darkScheme) {
-        // 系统支持动态取色时更新全局色彩
+        // 更新向后兼容的颜色缓存
         if (lightScheme != null && darkScheme != null) {
           AppThemeColors.updateFromDynamic(
             lightScheme: lightScheme,
             darkScheme: darkScheme,
           );
         }
-
         return MaterialApp(
           title: '弈',
           debugShowCheckedModeBanner: false,
@@ -140,7 +156,6 @@ class _ChessAppState extends State<ChessApp> {
               case '/about':
                 return _page(const AboutPage());
               case '/logs':
-                log('NAV', '日志终端');
                 return _page(const LogPage());
               case '/engine_select':
                 return _page(const EngineSelectionPage());
@@ -155,14 +170,16 @@ class _ChessAppState extends State<ChessApp> {
               case '/spider':
                 final spArgs = settings.arguments as Map<String, dynamic>?;
                 return _page(SpiderGamePage(suitCount: spArgs?['suits'] as int? ?? 1));
+              case '/game/chinese_checkers':
+                final ccArgs = settings.arguments as Map<String, dynamic>?;
+                final pCount = ccArgs?['players'] as int? ?? 2;
+                return _page(ChineseCheckersGamePage(numPlayers: pCount));
               default:
                 return _page(const MenuPage());
             }
           },
           builder: (context, child) {
-            return ThemeRipple(
-              key: ThemeRipple.globalKey,
-              onToggleTheme: () => _toggleTheme(context),
+            return CircularThemeRevealOverlay(
               child: child ?? const SizedBox.shrink(),
             );
           },
@@ -171,7 +188,6 @@ class _ChessAppState extends State<ChessApp> {
     );
   }
 
-  /// 页面路由 — 弹簧缓动滑入 + 淡入
   PageRouteBuilder _page(Widget page) {
     return PageRouteBuilder(
       pageBuilder: (_, __, ___) => page,

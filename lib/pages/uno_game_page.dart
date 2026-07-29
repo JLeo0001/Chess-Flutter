@@ -1,7 +1,6 @@
 import 'dart:async';
 import 'dart:math';
 import 'package:flutter/material.dart';
-import '../themes/app_theme.dart';
 import '../uno/uno_card.dart';
 import '../uno/uno_game.dart';
 import '../uno/uno_ai.dart';
@@ -277,33 +276,34 @@ class _UnoGamePageState extends State<UnoGamePage>
   @override
   Widget build(BuildContext context) {
     final night = Theme.of(context).brightness == Brightness.dark;
+    final cs = Theme.of(context).colorScheme;
     return Scaffold(
-      backgroundColor: AppThemeColors.bg(night),
+      backgroundColor: cs.surface,
       appBar: AppBar(title: Text('UNO · ${widget.playerCount}人'),
-          backgroundColor: AppThemeColors.bg(night), elevation: 0,
+          backgroundColor: cs.surface, elevation: 0,
           actions: [IconButton(icon: const Icon(Icons.help_outline), tooltip: '教程',
               onPressed: () => Navigator.pushNamed(context, '/tutorial', arguments: 'uno'))]),
       body: Stack(children: [
         SafeArea(child: Column(children: [
-          _opponents(night),
-          Expanded(child: _table(night)),
-          _statusLine(night),
-          _playerHand(night),
-          _buttons(night),
+          _opponents(night, cs),
+          Expanded(child: _table(night, cs)),
+          _statusLine(night, cs),
+          _playerHand(night, cs),
+          _buttons(night, cs),
           const SizedBox(height: 8),
         ])),
         // 发牌飞牌
-        if (_dealing) _dealFly(night),
+        if (_dealing) _dealFly(night, cs),
         // 特效叠加
         if (_effectType != null && !_dealing)
           IgnorePointer(child: Container(color: Colors.black54,
               child: Center(child: _buildEffect(_effectType!)))),
-        if (_playedCard != null) _playOverlay(night),
+        if (_playedCard != null) _playOverlay(night, cs),
       ]),
     );
   }
 
-  Widget _dealFly(bool night) {
+  Widget _dealFly(bool night, ColorScheme cs) {
     return IgnorePointer(
       child: AnimatedBuilder(animation: _dealFlyCtrl, builder: (_, __) {
         return SlideTransition(
@@ -316,11 +316,11 @@ class _UnoGamePageState extends State<UnoGamePage>
                 child: Container(
                   width: 40, height: 54,
                   decoration: BoxDecoration(
-                    color: AppThemeColors.highlight(night),
+                    color: cs.surfaceContainerHighest,
                     borderRadius: BorderRadius.circular(6),
-                    border: Border.all(color: AppThemeColors.primary(night), width: 2),
+                    border: Border.all(color: cs.primary, width: 2),
                     boxShadow: [BoxShadow(
-                      color: AppThemeColors.primary(night).withValues(alpha: 0.5),
+                      color: cs.primary.withValues(alpha: 0.5),
                       blurRadius: 12, spreadRadius: 2)]),
                   child: const Center(child: Text('U', style: TextStyle(
                       fontSize: 18, fontWeight: FontWeight.w900, color: Colors.white))),
@@ -333,7 +333,7 @@ class _UnoGamePageState extends State<UnoGamePage>
     );
   }
 
-  Widget _playOverlay(bool night) {
+  Widget _playOverlay(bool night, ColorScheme cs) {
     return IgnorePointer(
       child: AnimatedBuilder(animation: _playCtrl, builder: (_, __) {
         return SlideTransition(
@@ -345,7 +345,7 @@ class _UnoGamePageState extends State<UnoGamePage>
     );
   }
 
-  Widget _opponents(bool night) {
+  Widget _opponents(bool night, ColorScheme cs) {
     final players = List.generate(widget.playerCount, (i) => i);
     return Container(height: 40, margin: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
       child: Row(mainAxisAlignment: MainAxisAlignment.center, children: [
@@ -357,46 +357,46 @@ class _UnoGamePageState extends State<UnoGamePage>
               turns: _game.direction == 1 ? 0.0 : 0.5,
               curve: Curves.easeInOut,
               child: Icon(Icons.arrow_forward,
-                size: 12, color: AppThemeColors.subtitle(night).withValues(alpha: 0.5))),
+                size: 12, color: cs.onSurfaceVariant.withValues(alpha: 0.5))),
           ),
-          _playerChip(players[i], night),
+          _playerChip(players[i], night, cs),
         ],
       ]));
   }
 
-  Widget _playerChip(int p, bool night) {
+  Widget _playerChip(int p, bool night, ColorScheme cs) {
     final count = _dealing ? _dealtToPlayer(p) : _game.hands[p].length;
     final active = _game.currentPlayer == p && !_game.gameOver;
     final isMe = p == 0;
     return AnimatedContainer(duration: const Duration(milliseconds: 300),
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
       decoration: BoxDecoration(
-        color: active ? AppThemeColors.highlight(night) : AppThemeColors.bg(night),
+        color: active ? cs.surfaceContainerHighest : cs.surface,
         borderRadius: BorderRadius.circular(16),
         border: Border.all(
-          color: active ? AppThemeColors.primary(night) : AppThemeColors.divider(night),
+          color: active ? cs.primary : cs.outlineVariant,
           width: active ? 2 : 1)),
       child: Row(mainAxisSize: MainAxisSize.min, children: [
         Icon(isMe ? Icons.person : Icons.computer, size: 12,
-            color: active ? AppThemeColors.primary(night) : AppThemeColors.subtitle(night)),
+            color: active ? cs.primary : cs.onSurfaceVariant),
         const SizedBox(width: 3),
         Text(isMe ? '你' : '玩家$p', style: TextStyle(fontSize: 10, fontWeight: FontWeight.w600,
-            color: active ? AppThemeColors.primary(night) : AppThemeColors.subtitle(night))),
+            color: active ? cs.primary : cs.onSurfaceVariant)),
         const SizedBox(width: 4),
         AnimatedContainer(duration: const Duration(milliseconds: 200),
           padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 1),
           decoration: BoxDecoration(
-            color: active ? AppThemeColors.primary(night) : AppThemeColors.divider(night),
+            color: active ? cs.primary : cs.outlineVariant,
             borderRadius: BorderRadius.circular(6)),
           child: Text('$count', style: TextStyle(fontSize: 10, fontWeight: FontWeight.w700,
-              color: active ? AppThemeColors.filledBtnText(night) : AppThemeColors.subtitle(night)))),
+              color: active ? cs.onPrimary : cs.onSurfaceVariant))),
       ]));
   }
 
-  Widget _table(bool night) {
+  Widget _table(bool night, ColorScheme cs) {
     return Center(child: Column(mainAxisSize: MainAxisSize.min, children: [
       Row(mainAxisSize: MainAxisSize.min, children: [
-        Text('当前颜色：', style: TextStyle(fontSize: 12, color: AppThemeColors.subtitle(night))),
+        Text('当前颜色：', style: TextStyle(fontSize: 12, color: cs.onSurfaceVariant)),
         AnimatedContainer(duration: const Duration(milliseconds: 300),
           width: 20, height: 20,
           decoration: BoxDecoration(color: _c(_game.currentColor), shape: BoxShape.circle,
@@ -408,7 +408,7 @@ class _UnoGamePageState extends State<UnoGamePage>
           _makeCard(_game.topCard, 66),
           if (_game.gameOver)
             Container(padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-              decoration: BoxDecoration(color: AppThemeColors.highlight(night),
+              decoration: BoxDecoration(color: cs.surfaceContainerHighest,
                 borderRadius: BorderRadius.circular(12),
                 border: Border.all(color: _game.winner == 0 ? Colors.green : Colors.redAccent, width: 2)),
               child: Text(_game.winner == 0 ? '获胜' : '落败',
@@ -422,11 +422,11 @@ class _UnoGamePageState extends State<UnoGamePage>
             duration: const Duration(milliseconds: 300), child: _back(66))),
       ]),
       const SizedBox(height: 4),
-      Text('牌堆余${_game.drawPile.length}张', style: TextStyle(fontSize: 11, color: AppThemeColors.subtitle(night))),
+      Text('牌堆余${_game.drawPile.length}张', style: TextStyle(fontSize: 11, color: cs.onSurfaceVariant)),
     ]));
   }
 
-  Widget _statusLine(bool night) {
+  Widget _statusLine(bool night, ColorScheme cs) {
     final turn = _game.isPlayerTurn && !_game.gameOver;
     return Padding(padding: const EdgeInsets.symmetric(vertical: 6),
       child: Row(mainAxisAlignment: MainAxisAlignment.center, children: [
@@ -441,14 +441,14 @@ class _UnoGamePageState extends State<UnoGamePage>
               decoration: BoxDecoration(color: Colors.orange.withValues(alpha: 0.2), borderRadius: BorderRadius.circular(24)),
               child: Text('保留', style: TextStyle(fontSize: 15, fontWeight: FontWeight.w700, color: Colors.orange)))),
         ] else if (turn && !_needsColorPick)
-          Text('点击手牌出牌，或点击牌堆摸牌', style: TextStyle(fontSize: 13, color: AppThemeColors.subtitle(night)))
+          Text('点击手牌出牌，或点击牌堆摸牌', style: TextStyle(fontSize: 13, color: cs.onSurfaceVariant))
         else
           Text(_status, style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600,
-              color: _game.gameOver ? (_game.winner == 0 ? Colors.green : Colors.redAccent) : AppThemeColors.subtitle(night))),
+              color: _game.gameOver ? (_game.winner == 0 ? Colors.green : Colors.redAccent) : cs.onSurfaceVariant)),
       ]));
   }
 
-  Widget _playerHand(bool night) {
+  Widget _playerHand(bool night, ColorScheme cs) {
     final hand = _game.hands[0];
     final showCount = _dealing ? _dealtToMe : hand.length;
     if (showCount == 0 && _dealing) return const SizedBox(height: 100);
@@ -459,7 +459,7 @@ class _UnoGamePageState extends State<UnoGamePage>
       ClipRect(clipBehavior: Clip.none,
         child: SizedBox(height: 120,
           child: hand.isEmpty && !_dealing
-              ? Center(child: Text('手牌已出完', style: TextStyle(fontSize: 14, color: AppThemeColors.subtitle(night))))
+              ? Center(child: Text('手牌已出完', style: TextStyle(fontSize: 14, color: cs.onSurfaceVariant)))
               : ListView.builder(scrollDirection: Axis.horizontal,
                   padding: const EdgeInsets.only(left: 12, right: 12, top: 10, bottom: 10),
                   itemCount: showCount < hand.length ? showCount : hand.length,
@@ -497,20 +497,20 @@ class _UnoGamePageState extends State<UnoGamePage>
       child: Row(mainAxisAlignment: MainAxisAlignment.center, children: colors));
   }
 
-  Widget _buttons(bool night) {
+  Widget _buttons(bool night, ColorScheme cs) {
     return Padding(padding: const EdgeInsets.symmetric(horizontal: 24),
       child: Row(children: [
         Expanded(child: OutlinedButton(onPressed: () => Navigator.pop(context),
-          style: OutlinedButton.styleFrom(foregroundColor: AppThemeColors.primary(night),
-            side: BorderSide(color: AppThemeColors.primary(night), width: 2),
+          style: OutlinedButton.styleFrom(foregroundColor: cs.primary,
+            side: BorderSide(color: cs.primary, width: 2),
             shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(80))),
           child: const Text('返回'))),
         const SizedBox(width: 16),
         Expanded(flex: 2, child: FilledButton(
           onPressed: _game.gameOver ? _restart
               : (_game.isPlayerTurn && !_needsColorPick && !_waitingDrawDecision ? _onDraw : null),
-          style: FilledButton.styleFrom(backgroundColor: AppThemeColors.filledBtn(night),
-            foregroundColor: AppThemeColors.filledBtnText(night),
+          style: FilledButton.styleFrom(backgroundColor: cs.primary,
+            foregroundColor: cs.onPrimary,
             shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(80))),
           child: Text(_game.gameOver ? '再来一局' : '摸牌', style: const TextStyle(fontSize: 16))))]));
   }

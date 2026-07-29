@@ -4,7 +4,6 @@ import 'package:flutter/material.dart';
 import 'package:card_game/card_game.dart';
 import '../doudizhu/doudizhu_card.dart';
 import '../doudizhu/doudizhu_game.dart';
-import '../themes/app_theme.dart';
 
 enum DdzPhase { bidding, playing, result }
 
@@ -242,71 +241,72 @@ class _DoudizhuGamePageState extends State<DoudizhuGamePage>
   @override
   Widget build(BuildContext context) {
     final night = Theme.of(context).brightness == Brightness.dark;
+    final cs = Theme.of(context).colorScheme;
     return Scaffold(
-      backgroundColor: AppThemeColors.bg(night),
+      backgroundColor: cs.surface,
       appBar: AppBar(
         title: Text(_phase == DdzPhase.result
             ? (_game.winner == 0 ? '🎉 你赢了！' : (_game.playerIsLandlord ? '农民获胜' : '地主获胜'))
             : '斗地主'),
-        backgroundColor: AppThemeColors.bg(night), elevation: 0,
+        backgroundColor: cs.surface, elevation: 0,
         actions: [IconButton(icon: const Icon(Icons.help_outline), tooltip: '教程',
               onPressed: () => Navigator.pushNamed(context, '/tutorial', arguments: 'doudizhu')),
           IconButton(icon: const Icon(Icons.refresh), onPressed: _newGame)],
       ),
       body: SafeArea(child: Stack(children: [
         Column(children: [
-          _topBar(night),
-          Expanded(child: _centerArea(night)),
-          if (_phase == DdzPhase.playing) _actionBar(night),
-          if (_phase == DdzPhase.playing) _playerHand(night),
+          _topBar(night, cs),
+          Expanded(child: _centerArea(night, cs)),
+          if (_phase == DdzPhase.playing) _actionBar(night, cs),
+          if (_phase == DdzPhase.playing) _playerHand(night, cs),
         ]),
-        if (_dealing) _dealFly(night),
-        if (_animPlay != null && _phase == DdzPhase.playing) _playOverlay(night),
+        if (_dealing) _dealFly(night, cs),
+        if (_animPlay != null && _phase == DdzPhase.playing) _playOverlay(night, cs),
         if (_effectType != null) _effectOverlay(),
       ])),
     );
   }
 
-  Widget _topBar(bool night) {
+  Widget _topBar(bool night, ColorScheme cs) {
     return Container(height: 48, padding: const EdgeInsets.symmetric(horizontal: 16),
       child: Row(children: [
-        _aiInfo(1, night), const Spacer(), _aiInfo(2, night),
+        _aiInfo(1, night, cs), const Spacer(), _aiInfo(2, night, cs),
       ]),
     );
   }
 
-  Widget _aiInfo(int p, bool night) {
+  Widget _aiInfo(int p, bool night, ColorScheme cs) {
     final count = _dealing ? _dealtToPlayer(p) : _game.hands[p].length;
     final isL = _game.landlordIdx == p;
     final cur = _game.currentPlayer == p && !_game.gameOver && _phase == DdzPhase.playing;
     return AnimatedContainer(duration: const Duration(milliseconds: 300),
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
       decoration: BoxDecoration(
-        color: cur ? AppThemeColors.highlight(night) : Colors.transparent,
+        color: cur ? cs.surfaceContainerHighest : Colors.transparent,
         borderRadius: BorderRadius.circular(10),
-        border: Border.all(color: cur ? AppThemeColors.primary(night) : Colors.transparent, width: 1.5),
+        border: Border.all(color: cur ? cs.primary : Colors.transparent, width: 1.5),
       ),
       child: Row(mainAxisSize: MainAxisSize.min, children: [
-        Icon(Icons.computer, size: 16, color: cur ? AppThemeColors.primary(night) : AppThemeColors.subtitle(night)),
+        Icon(Icons.computer, size: 16, color: cur ? cs.primary : cs.onSurfaceVariant),
         const SizedBox(width: 4),
-        Text(_playerLabel(p), style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: cur ? AppThemeColors.primary(night) : AppThemeColors.subtitle(night))),
+        Text(_playerLabel(p), style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: cur ? cs.primary : cs.onSurfaceVariant)),
         if (isL) ...[const SizedBox(width: 3), Container(padding: const EdgeInsets.symmetric(horizontal: 3, vertical: 0), decoration: BoxDecoration(color: Colors.orange, borderRadius: BorderRadius.circular(3)), child: const Text('地主', style: TextStyle(fontSize: 8, color: Colors.white, fontWeight: FontWeight.bold)))],
         const SizedBox(width: 4),
         AnimatedContainer(duration: const Duration(milliseconds: 200),
           padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 1),
-          decoration: BoxDecoration(color: cur ? AppThemeColors.primary(night) : AppThemeColors.divider(night), borderRadius: BorderRadius.circular(6)),
-          child: Text('$count', style: TextStyle(fontSize: 11, fontWeight: FontWeight.w700, color: cur ? AppThemeColors.filledBtnText(night) : AppThemeColors.subtitle(night)))),
+          decoration: BoxDecoration(color: cur ? cs.primary : cs.outlineVariant, borderRadius: BorderRadius.circular(6)),
+          child: Text('$count', style: TextStyle(fontSize: 11, fontWeight: FontWeight.w700, color: cur ? cs.onPrimary : cs.onSurfaceVariant))),
       ]),
     );
   }
 
-  Widget _centerArea(bool night) {
-    if (_phase == DdzPhase.bidding) return _biddingArea(night);
-    if (_phase == DdzPhase.result) return _resultArea(night);
-    return _playArea(night);
+  Widget _centerArea(bool night, ColorScheme cs) {
+    if (_phase == DdzPhase.bidding) return _biddingArea(night, cs);
+    if (_phase == DdzPhase.result) return _resultArea(night, cs);
+    return _playArea(night, cs);
   }
 
-  Widget _biddingArea(bool night) {
+  Widget _biddingArea(bool night, ColorScheme cs) {
     final isHuman = _bidder == 0;
     return Center(child: Column(mainAxisSize: MainAxisSize.min, children: [
       Row(mainAxisAlignment: MainAxisAlignment.center, children: [
@@ -314,35 +314,35 @@ class _DoudizhuGamePageState extends State<DoudizhuGamePage>
       ]),
       const SizedBox(height: 16),
       Container(padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-        decoration: BoxDecoration(color: AppThemeColors.highlight(night), borderRadius: BorderRadius.circular(10)),
-        child: Text('最高叫分: $_bidValue', style: TextStyle(fontSize: 15, fontWeight: FontWeight.bold, color: AppThemeColors.primary(night)))),
+        decoration: BoxDecoration(color: cs.surfaceContainerHighest, borderRadius: BorderRadius.circular(10)),
+        child: Text('最高叫分: $_bidValue', style: TextStyle(fontSize: 15, fontWeight: FontWeight.bold, color: cs.primary))),
       const SizedBox(height: 16),
       if (isHuman) ...[
-        Text('轮到你了', style: TextStyle(fontSize: 17, fontWeight: FontWeight.bold, color: AppThemeColors.primary(night))),
+        Text('轮到你了', style: TextStyle(fontSize: 17, fontWeight: FontWeight.bold, color: cs.primary)),
         const SizedBox(height: 12),
         Row(mainAxisAlignment: MainAxisAlignment.center, children: [
-          _bidBtn('不叫', 0, night),
-          if (_bidValue < 1) ...[const SizedBox(width: 8), _bidBtn('1分', 1, night)],
-          if (_bidValue < 2) ...[const SizedBox(width: 8), _bidBtn('2分', 2, night)],
-          if (_bidValue < 3) ...[const SizedBox(width: 8), _bidBtn('3分', 3, night)],
+          _bidBtn('不叫', 0, night, cs),
+          if (_bidValue < 1) ...[const SizedBox(width: 8), _bidBtn('1分', 1, night, cs)],
+          if (_bidValue < 2) ...[const SizedBox(width: 8), _bidBtn('2分', 2, night, cs)],
+          if (_bidValue < 3) ...[const SizedBox(width: 8), _bidBtn('3分', 3, night, cs)],
         ]),
       ] else
-        Text('${_playerLabel(_bidder)}思考中…', style: TextStyle(fontSize: 15, color: AppThemeColors.subtitle(night))),
+        Text('${_playerLabel(_bidder)}思考中…', style: TextStyle(fontSize: 15, color: cs.onSurfaceVariant)),
       const SizedBox(height: 16),
       SizedBox(height: 80, child: ListView(scrollDirection: Axis.horizontal, padding: const EdgeInsets.symmetric(horizontal: 8),
         children: _game.hands[0].map((c) => Padding(padding: const EdgeInsets.symmetric(horizontal: 2), child: _renderCard(c, 48))).toList())),
     ]));
   }
 
-  Widget _bidBtn(String label, int value, bool night) {
+  Widget _bidBtn(String label, int value, bool night, ColorScheme cs) {
     return FilledButton(onPressed: () => _humanBid(value),
-      style: FilledButton.styleFrom(backgroundColor: value == 0 ? AppThemeColors.divider(night) : AppThemeColors.filledBtn(night),
-        foregroundColor: value == 0 ? AppThemeColors.subtitle(night) : AppThemeColors.filledBtnText(night),
+      style: FilledButton.styleFrom(backgroundColor: value == 0 ? cs.outlineVariant : cs.primary,
+        foregroundColor: value == 0 ? cs.onSurfaceVariant : cs.onPrimary,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18)), padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8)),
       child: Text(label, style: const TextStyle(fontSize: 14, fontWeight: FontWeight.bold)));
   }
 
-  Widget _playArea(bool night) {
+  Widget _playArea(bool night, ColorScheme cs) {
     final lp = _game.lastPlay;
     final lpi = _game.lastPlayerIdx;
     final isHumanTurn = _game.isPlayerTurn;
@@ -352,9 +352,9 @@ class _DoudizhuGamePageState extends State<DoudizhuGamePage>
       // 底牌
       Container(
         padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
-        decoration: BoxDecoration(color: AppThemeColors.highlight(night).withValues(alpha: 0.3), borderRadius: BorderRadius.circular(8)),
+        decoration: BoxDecoration(color: cs.surfaceContainerHighest.withValues(alpha: 0.3), borderRadius: BorderRadius.circular(8)),
         child: Row(mainAxisSize: MainAxisSize.min, children: [
-          Text('底牌', style: TextStyle(fontSize: 11, color: AppThemeColors.subtitle(night))),
+          Text('底牌', style: TextStyle(fontSize: 11, color: cs.onSurfaceVariant)),
           const SizedBox(width: 6),
           ..._game.bottomCards.map((c) => Padding(padding: const EdgeInsets.symmetric(horizontal: 2), child: _renderCard(c, 38))),
         ]),
@@ -367,16 +367,16 @@ class _DoudizhuGamePageState extends State<DoudizhuGamePage>
           decoration: BoxDecoration(
             color: night ? Colors.white.withValues(alpha: 0.03) : Colors.black.withValues(alpha: 0.02),
             borderRadius: BorderRadius.circular(16),
-            border: Border.all(color: AppThemeColors.divider(night).withValues(alpha: 0.3)),
+            border: Border.all(color: cs.outlineVariant.withValues(alpha: 0.3)),
           ),
           child: Center(
             child: _animPlay == null
                 ? (lp != null
-                    ? _buildPlayedCards(lp, lpi!, night)
+                    ? _buildPlayedCards(lp, lpi!, night, cs)
                     : Column(mainAxisSize: MainAxisSize.min, children: [
-                        Icon(Icons.play_circle_outline, size: 32, color: AppThemeColors.subtitle(night).withValues(alpha: 0.4)),
+                        Icon(Icons.play_circle_outline, size: 32, color: cs.onSurfaceVariant.withValues(alpha: 0.4)),
                         const SizedBox(height: 8),
-                        Text('地主先出牌', style: TextStyle(fontSize: 15, color: AppThemeColors.subtitle(night).withValues(alpha: 0.6))),
+                        Text('地主先出牌', style: TextStyle(fontSize: 15, color: cs.onSurfaceVariant.withValues(alpha: 0.6))),
                       ]))
                 : const SizedBox.shrink(),
           ),
@@ -388,7 +388,7 @@ class _DoudizhuGamePageState extends State<DoudizhuGamePage>
         Container(
           padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 6),
           decoration: BoxDecoration(
-            color: isHumanTurn ? AppThemeColors.primary(night).withValues(alpha: 0.15) : AppThemeColors.highlight(night),
+            color: isHumanTurn ? cs.primary.withValues(alpha: 0.15) : cs.surfaceContainerHighest,
             borderRadius: BorderRadius.circular(20),
           ),
           child: Row(mainAxisSize: MainAxisSize.min, children: [
@@ -399,11 +399,11 @@ class _DoudizhuGamePageState extends State<DoudizhuGamePage>
             ] else ...[
               SizedBox(
                 width: 14, height: 14,
-                child: CircularProgressIndicator(strokeWidth: 2, color: AppThemeColors.subtitle(night)),
+                child: CircularProgressIndicator(strokeWidth: 2, color: cs.onSurfaceVariant),
               ),
               const SizedBox(width: 6),
               Text('${_playerLabel(_game.currentPlayer)}思考中…',
-                  style: TextStyle(fontSize: 14, color: AppThemeColors.subtitle(night))),
+                  style: TextStyle(fontSize: 14, color: cs.onSurfaceVariant)),
             ],
           ]),
         ),
@@ -411,19 +411,19 @@ class _DoudizhuGamePageState extends State<DoudizhuGamePage>
     ]);
   }
 
-  Widget _buildPlayedCards(DdzCombo lp, int lpi, bool night) {
+  Widget _buildPlayedCards(DdzCombo lp, int lpi, bool night, ColorScheme cs) {
     return Column(mainAxisSize: MainAxisSize.min, children: [
       Container(
         padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
         decoration: BoxDecoration(
-          color: AppThemeColors.highlight(night),
+          color: cs.surfaceContainerHighest,
           borderRadius: BorderRadius.circular(8),
         ),
         child: Column(children: [
           Row(mainAxisSize: MainAxisSize.min, children: [
-            Icon(lpi == 0 ? Icons.person : Icons.computer, size: 14, color: AppThemeColors.subtitle(night)),
+            Icon(lpi == 0 ? Icons.person : Icons.computer, size: 14, color: cs.onSurfaceVariant),
             const SizedBox(width: 4),
-            Text(_playerLabel(lpi), style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: AppThemeColors.primary(night))),
+            Text(_playerLabel(lpi), style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: cs.primary)),
           ]),
           const SizedBox(height: 4),
           Row(mainAxisSize: MainAxisSize.min, children: lp.cards.map((c) => Padding(padding: const EdgeInsets.symmetric(horizontal: 2), child: _renderCard(c, 50))).toList()),
@@ -432,7 +432,7 @@ class _DoudizhuGamePageState extends State<DoudizhuGamePage>
     ]);
   }
 
-  Widget _resultArea(bool night) {
+  Widget _resultArea(bool night, ColorScheme cs) {
     final w = _game.winner!;
     final isL = _game.landlordIdx == w;
     return Center(child: Column(mainAxisSize: MainAxisSize.min, children: [
@@ -448,7 +448,7 @@ class _DoudizhuGamePageState extends State<DoudizhuGamePage>
       Expanded(child: ListView(padding: const EdgeInsets.symmetric(horizontal: 12), children: [
         for (int p = 1; p <= 2; p++) ...[
           Padding(padding: const EdgeInsets.only(top: 6, bottom: 3),
-            child: Text('${_playerLabel(p)} (${_game.landlordIdx == p ? "地主" : "农民"})', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: AppThemeColors.subtitle(night)))),
+            child: Text('${_playerLabel(p)} (${_game.landlordIdx == p ? "地主" : "农民"})', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: cs.onSurfaceVariant))),
           SizedBox(height: 56, child: ListView(scrollDirection: Axis.horizontal,
             children: _game.hands[p].map((c) => Padding(padding: const EdgeInsets.symmetric(horizontal: 1), child: _renderCard(c, 40))).toList())),
         ],
@@ -456,26 +456,26 @@ class _DoudizhuGamePageState extends State<DoudizhuGamePage>
     ]));
   }
 
-  Widget _actionBar(bool night) {
+  Widget _actionBar(bool night, ColorScheme cs) {
     return Padding(padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
       child: Row(children: [
         if (_game.isPlayerTurn) ...[
           Expanded(child: OutlinedButton(onPressed: _canPass ? _doPass : null,
-            style: OutlinedButton.styleFrom(foregroundColor: AppThemeColors.subtitle(night), side: BorderSide(color: AppThemeColors.divider(night)), shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18))),
+            style: OutlinedButton.styleFrom(foregroundColor: cs.onSurfaceVariant, side: BorderSide(color: cs.outlineVariant), shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18))),
             child: const Text('不出', style: TextStyle(fontSize: 14)))),
           const SizedBox(width: 8),
           Expanded(child: OutlinedButton(onPressed: _game.isPlayerTurn ? _showHint : null,
-            style: OutlinedButton.styleFrom(foregroundColor: AppThemeColors.primary(night), side: BorderSide(color: AppThemeColors.primary(night)), shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18))),
+            style: OutlinedButton.styleFrom(foregroundColor: cs.primary, side: BorderSide(color: cs.primary), shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18))),
             child: Text(_hints != null ? '下一个' : '提示', style: const TextStyle(fontSize: 14)))),
           const SizedBox(width: 8),
           Expanded(flex: 2, child: FilledButton(onPressed: _canPlay ? _doPlay : null,
-            style: FilledButton.styleFrom(backgroundColor: AppThemeColors.filledBtn(night), foregroundColor: AppThemeColors.filledBtnText(night), shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18))),
+            style: FilledButton.styleFrom(backgroundColor: cs.primary, foregroundColor: cs.onPrimary, shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18))),
             child: const Text('出牌', style: TextStyle(fontSize: 15, fontWeight: FontWeight.bold)))),
-        ] else ...[const Spacer(), Text('等待中…', style: TextStyle(fontSize: 14, color: AppThemeColors.subtitle(night))), const Spacer()],
+        ] else ...[const Spacer(), Text('等待中…', style: TextStyle(fontSize: 14, color: cs.onSurfaceVariant)), const Spacer()],
       ]));
   }
 
-  Widget _playerHand(bool night) {
+  Widget _playerHand(bool night, ColorScheme cs) {
     if (_phase != DdzPhase.playing || _dealing) return const SizedBox(height: 80);
     final hand = _game.hands[0];
     if (hand.isEmpty) return const SizedBox(height: 80);
@@ -509,7 +509,7 @@ class _DoudizhuGamePageState extends State<DoudizhuGamePage>
   }
 
   // ═══ 动画叠加 ═══
-  Widget _dealFly(bool night) {
+  Widget _dealFly(bool night, ColorScheme cs) {
     return IgnorePointer(
       child: AnimatedBuilder(animation: _dealFlyCtrl, builder: (_, __) {
         return SlideTransition(position: _dealFlyPos,
@@ -520,7 +520,7 @@ class _DoudizhuGamePageState extends State<DoudizhuGamePage>
     );
   }
 
-  Widget _playOverlay(bool night) {
+  Widget _playOverlay(bool night, ColorScheme cs) {
     return IgnorePointer(
       child: AnimatedBuilder(animation: _playCtrl, builder: (_, __) {
         return SlideTransition(position: _playPos,

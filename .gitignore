@@ -44,6 +44,10 @@ publish.keystore
 publish.keystore.old
 android/key.properties
 
+# iOS / macOS Pods
+ios/Pods/
+macos/Pods/
+
 # Android Studio will place build artifacts here
 /android/app/debug
 /android/app/profile

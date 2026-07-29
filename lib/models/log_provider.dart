@@ -1,8 +1,8 @@
 import 'dart:collection';
 import 'dart:convert';
-import 'dart:io';
 import 'package:flutter/foundation.dart';
 import 'package:path_provider/path_provider.dart';
+import 'log_io_types.dart';
 
 // ═══════════════════════════════════════════════════
 //  全局快捷入口
@@ -182,7 +182,8 @@ class LogStats {
 
   int tagCount(String tag) => perTag[tag] ?? 0;
   int levelCount(LogLevel l) => perLevel[l] ?? 0;
-  int tagLevelCount(String tag, LogLevel l) => perTagLevel['$tag:${l.short}'] ?? 0;
+  int tagLevelCount(String tag, LogLevel l) =>
+      perTagLevel['$tag:${l.short}'] ?? 0;
 }
 
 // ═══════════════════════════════════════════════════
@@ -201,7 +202,7 @@ class LogProvider extends ChangeNotifier {
   final _lines = Queue<LogEntry>();
   bool _ready = false;
 
-  // ══ 文件句柄 ══
+  // ══ 文件句柄（Web 上为 null — 不写文件）══
   File? _currentLogFile;
   String? _currentDateStr;
 
@@ -283,8 +284,7 @@ class LogProvider extends ChangeNotifier {
   }
 
   /// 搜索日志
-  List<LogEntry> search(
-      {String? query, LogLevel? minLevel, String? tag}) {
+  List<LogEntry> search({String? query, LogLevel? minLevel, String? tag}) {
     return _lines.where((e) {
       if (minLevel != null && e.level.severity < minLevel.severity) {
         return false;
@@ -302,17 +302,24 @@ class LogProvider extends ChangeNotifier {
   }
 
   // ════════════════════════════════════════════
-  //  文件持久化
+  //  文件持久化（Web 上为安全空操作）
   // ════════════════════════════════════════════
 
   Future<void> init() async {
+    if (kIsWeb) {
+      _ready = true;
+      i('SYS', '日志系统就绪（Web 模式，无文件持久化）');
+      return;
+    }
+
     try {
       final dir = await _ensureLogDir();
       await _cleanOldLogs(dir);
 
       // 今日日志文件
       _currentDateStr = _todayStr();
-      _currentLogFile = File('${dir.path}/${_logFilePrefix}$_currentDateStr.txt');
+      _currentLogFile =
+          File('${dir.path}/${_logFilePrefix}$_currentDateStr.txt');
 
       // 读取今日已有日志
       if (await _currentLogFile!.exists()) {
@@ -337,6 +344,8 @@ class LogProvider extends ChangeNotifier {
   }
 
   void _appendToFile(LogEntry entry) {
+    if (kIsWeb) return;
+
     try {
       final f = _currentLogFile;
       if (f == null) return;
@@ -349,14 +358,12 @@ class LogProvider extends ChangeNotifier {
         _currentLogFile = File('${dir.path}/${_logFilePrefix}$today.txt');
       }
 
-      f.writeAsStringSync(
-        '${entry.toFileLine()}\n',
-        mode: FileMode.append,
-      );
+      f.writeAsStringSync('${entry.toFileLine()}\n', mode: FileMode.append);
     } catch (_) {}
   }
 
   void _clearCurrentFile() {
+    if (kIsWeb) return;
     try {
       _currentLogFile?.writeAsStringSync('');
     } catch (_) {}
@@ -396,6 +403,7 @@ class LogProvider extends ChangeNotifier {
 
   /// 外部调用：裁剪当前文件
   Future<void> trimFile() async {
+    if (kIsWeb) return;
     try {
       final f = _currentLogFile;
       if (f == null || !await f.exists()) return;
@@ -410,6 +418,7 @@ class LogProvider extends ChangeNotifier {
 
   /// 删除所有过期日志文件
   Future<void> removeOldLogs() async {
+    if (kIsWeb) return;
     try {
       final dir = await _ensureLogDir();
       await _cleanOldLogs(dir);

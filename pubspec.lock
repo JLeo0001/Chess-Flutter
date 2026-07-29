@@ -74,13 +74,12 @@ packages:
     source: hosted
     version: "1.0.8"
   dartchess:
-    dependency: transitive
+    dependency: "direct overridden"
     description:
-      name: dartchess
-      sha256: "6ddc173288cb63444edf0d766986c283bb1ae6d8ede2ac1fc9de857f0f84d051"
-      url: "https://pub.dev"
-    source: hosted
-    version: "0.9.2"
+      path: "patches/dartchess"
+      relative: true
+    source: path
+    version: "0.9.2-patch1"
   dynamic_color:
     dependency: "direct main"
     description:

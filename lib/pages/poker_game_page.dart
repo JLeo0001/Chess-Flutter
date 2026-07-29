@@ -2,7 +2,6 @@ import 'dart:math';
 import 'package:card_game/card_game.dart';
 import 'package:flutter/material.dart';
 import '../poker/poker_helper.dart';
-import '../themes/app_theme.dart';
 
 enum PokerPhase { dealing, discard, drawing, holdemDeal, flop, turn, river, showdown }
 
@@ -147,41 +146,42 @@ class _PokerGamePageState extends State<PokerGamePage> {
   @override
   Widget build(BuildContext context) {
     final night = Theme.of(context).brightness == Brightness.dark;
+    final cs = Theme.of(context).colorScheme;
     return Scaffold(
-      backgroundColor: AppThemeColors.bg(night),
+      backgroundColor: cs.surface,
       appBar: AppBar(title: Text(_isDraw ? '换牌扑克' : '德州扑克'),
-          backgroundColor: AppThemeColors.bg(night), elevation: 0,
+          backgroundColor: cs.surface, elevation: 0,
           actions: [IconButton(icon: const Icon(Icons.help_outline), tooltip: '教程',
               onPressed: () => Navigator.pushNamed(context, '/tutorial', arguments: widget.variant == 'holdem' ? 'poker_holdem' : 'poker_draw'))]),
       body: SafeArea(child: Column(children: [
         const SizedBox(height: 8),
-        _aiZone(night),
-        if (_isHoldem) _communityZone(night),
-        _statusBar(night),
-        _playerZone(night),
+        _aiZone(night, cs),
+        if (_isHoldem) _communityZone(night, cs),
+        _statusBar(night, cs),
+        _playerZone(night, cs),
         const Spacer(),
-        _actionBar(night),
+        _actionBar(night, cs),
         const SizedBox(height: 16),
       ])),
     );
   }
 
-  Widget _aiZone(bool night) {
+  Widget _aiZone(bool night, ColorScheme cs) {
     final cards = _aiRevealed
         ? _aiHand.map((c) => _pokerCard(c)).toList()
         : List.generate(_aiHand.length, (_) => const _CardBack());
     return Column(children: [
-      _label('AI', night, icon: Icons.computer),
+      _label('AI', night, cs, icon: Icons.computer),
       const SizedBox(height: 8),
       SizedBox(height: 100, child: Row(mainAxisAlignment: MainAxisAlignment.center, children: cards)),
       if (_aiHandName != null)
         Padding(padding: const EdgeInsets.only(top: 4),
           child: Text(_aiHandName!, style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold,
-              color: AppThemeColors.primary(night)))),
+              color: cs.primary))),
     ]);
   }
 
-  Widget _communityZone(bool night) {
+  Widget _communityZone(bool night, ColorScheme cs) {
     final cc = <Widget>[
       ..._visCC.map((c) => _pokerCard(c)),
       ...List.generate(_hidCC.length, (_) => const _CardBack()),
@@ -189,33 +189,33 @@ class _PokerGamePageState extends State<PokerGamePage> {
     ];
     return Column(children: [
       const SizedBox(height: 4),
-      Divider(indent: 48, endIndent: 48, color: AppThemeColors.divider(night)),
-      _label('公共牌', night),
+      Divider(indent: 48, endIndent: 48, color: cs.outlineVariant),
+      _label('公共牌', night, cs),
       const SizedBox(height: 8),
       SizedBox(height: 100, child: Row(mainAxisAlignment: MainAxisAlignment.center, children: cc)),
-      Divider(indent: 48, endIndent: 48, color: AppThemeColors.divider(night)),
+      Divider(indent: 48, endIndent: 48, color: cs.outlineVariant),
     ]);
   }
 
-  Widget _statusBar(bool night) {
+  Widget _statusBar(bool night, ColorScheme cs) {
     String text; Color color;
     switch (_phase) {
-      case PokerPhase.dealing: text = '发牌中…'; color = AppThemeColors.subtitle(night); break;
+      case PokerPhase.dealing: text = '发牌中…'; color = cs.onSurfaceVariant; break;
       case PokerPhase.discard:
         text = _selectedIndices.isEmpty ? '点击选牌（最多3张）' : '已选 $_selectedIndices 张，点击换牌';
-        color = AppThemeColors.subtitle(night); break;
-      case PokerPhase.drawing: text = '换牌中…'; color = AppThemeColors.subtitle(night); break;
-      case PokerPhase.holdemDeal: text = '点击下方按钮翻公牌'; color = AppThemeColors.subtitle(night); break;
-      case PokerPhase.flop: text = '三张公牌已翻开'; color = AppThemeColors.subtitle(night); break;
-      case PokerPhase.turn: text = '第四张公牌已翻开'; color = AppThemeColors.subtitle(night); break;
-      case PokerPhase.river: text = '全部公牌已翻开，点击开牌'; color = AppThemeColors.subtitle(night); break;
+        color = cs.onSurfaceVariant; break;
+      case PokerPhase.drawing: text = '换牌中…'; color = cs.onSurfaceVariant; break;
+      case PokerPhase.holdemDeal: text = '点击下方按钮翻公牌'; color = cs.onSurfaceVariant; break;
+      case PokerPhase.flop: text = '三张公牌已翻开'; color = cs.onSurfaceVariant; break;
+      case PokerPhase.turn: text = '第四张公牌已翻开'; color = cs.onSurfaceVariant; break;
+      case PokerPhase.river: text = '全部公牌已翻开，点击开牌'; color = cs.onSurfaceVariant; break;
       case PokerPhase.showdown: text = '$_resultTitle'; color = _playerWon ? Colors.green : (_isDrawGame ? Colors.orange : Colors.redAccent); break;
     }
     return Padding(padding: const EdgeInsets.symmetric(vertical: 10),
       child: Text(text, style: TextStyle(fontSize: 15, fontWeight: FontWeight.w600, color: color)));
   }
 
-  Widget _playerZone(bool night) {
+  Widget _playerZone(bool night, ColorScheme cs) {
     final cards = List.generate(_playerHand.length, (i) {
       final sel = _phase == PokerPhase.discard && _selectedIndices.contains(i);
       return GestureDetector(
@@ -228,22 +228,22 @@ class _PokerGamePageState extends State<PokerGamePage> {
       );
     });
     return Column(children: [
-      _label('你', night, icon: Icons.person),
+      _label('你', night, cs, icon: Icons.person),
       const SizedBox(height: 8),
       SizedBox(height: 110, child: Row(mainAxisAlignment: MainAxisAlignment.center, children: cards)),
       if (_playerHandName != null)
         Padding(padding: const EdgeInsets.only(top: 4),
           child: Text(_playerHandName!, style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold,
-              color: AppThemeColors.primary(night)))),
+              color: cs.primary))),
     ]);
   }
 
-  Widget _actionBar(bool night) {
+  Widget _actionBar(bool night, ColorScheme cs) {
     return Padding(padding: const EdgeInsets.symmetric(horizontal: 28),
       child: Row(children: [
         Expanded(child: OutlinedButton(onPressed: () => Navigator.pop(context),
-          style: OutlinedButton.styleFrom(foregroundColor: AppThemeColors.primary(night),
-            side: BorderSide(color: AppThemeColors.primary(night), width: 2),
+          style: OutlinedButton.styleFrom(foregroundColor: cs.primary,
+            side: BorderSide(color: cs.primary, width: 2),
             shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(80))),
           child: const Text('返回'))),
         const SizedBox(width: 16),
@@ -253,18 +253,18 @@ class _PokerGamePageState extends State<PokerGamePage> {
             else if (_isDraw) _discard();
             else _nextHoldemPhase();
           } : null,
-          style: FilledButton.styleFrom(backgroundColor: AppThemeColors.filledBtn(night),
-            foregroundColor: AppThemeColors.filledBtnText(night),
+          style: FilledButton.styleFrom(backgroundColor: cs.primary,
+            foregroundColor: cs.onPrimary,
             shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(80))),
           child: Text(_actionLabel, style: const TextStyle(fontSize: 16)))),
       ]));
   }
 
-  Widget _label(String text, bool night, {IconData? icon}) {
+  Widget _label(String text, bool night, ColorScheme cs, {IconData? icon}) {
     return Row(mainAxisAlignment: MainAxisAlignment.center, children: [
-      if (icon != null) Icon(icon, size: 16, color: AppThemeColors.subtitle(night)),
+      if (icon != null) Icon(icon, size: 16, color: cs.onSurfaceVariant),
       if (icon != null) const SizedBox(width: 4),
-      Text(text, style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: AppThemeColors.subtitle(night))),
+      Text(text, style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: cs.onSurfaceVariant)),
     ]);
   }
 

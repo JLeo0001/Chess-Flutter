@@ -53,7 +53,7 @@ class GobangAI {
 
   int _negamax(List<List<int>> board, int depth, int alpha, int beta) {
     // 终局检测（上一手已经赢了）
-    final lastColor = (depth % 2 == 1) ? opponentColor : aiColor;
+    final lastColor = (depth % 2 == 1) ? aiColor : opponentColor;
     if (_checkWinAtBoard(board, lastColor)) {
       return -(WIN - depth * 10);
     }
